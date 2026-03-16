@@ -231,22 +231,22 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
 - [x] 10. Checkpoint — Ensure all API and album tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Media viewing (lightbox and video player)
-  - [ ] 11.1 Implement `GET /api/media/:id` route
+- [x] 11. Media viewing (lightbox and video player)
+  - [x] 11.1 Implement `GET /api/media/:id` route
     - Require auth; fetch media record; generate signed CDN URL (3600s) for `s3_key`; return media record with `media_url`
     - _Requirements: 5.1, 5.2_
-  - [ ] 11.2 Write property test for signed CDN URL expiry on media view
+  - [x] 11.2 Write property test for signed CDN URL expiry on media view
     - **Property 11: Signed CDN URLs expire within 1 hour**
     - **Property 24: Signed URLs are scoped to a specific object key**
     - **Validates: Requirements 3.3, 5.1, 9.6**
     - File: `src/__tests__/property/urls.property.ts`
-  - [ ] 11.3 Implement lightbox component (`src/components/Lightbox.tsx`)
+  - [x] 11.3 Implement lightbox component (`src/components/Lightbox.tsx`)
     - Client component; renders full-resolution photo in an overlay; previous/next navigation using keyboard and button controls; close returns to feed/album without full reload
     - _Requirements: 5.1, 5.3, 5.4_
-  - [ ] 11.4 Implement video player component (`src/components/VideoPlayer.tsx`)
+  - [x] 11.4 Implement video player component (`src/components/VideoPlayer.tsx`)
     - Client component using HTML5 `<video>` with play, pause, seek controls; source set to signed CDN URL
     - _Requirements: 5.2_
-  - [ ] 11.5 Wire lightbox and video player into feed and album pages
+  - [x] 11.5 Wire lightbox and video player into feed and album pages
     - On thumbnail click, open `<Lightbox>` (photo) or `<VideoPlayer>` (video) as a modal overlay
     - Pass current media list for prev/next navigation context
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
