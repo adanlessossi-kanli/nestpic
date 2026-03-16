@@ -56,103 +56,103 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - File: `src/__tests__/unit/objectStore.test.ts`
     - _Requirements: 10.4_
 
-- [ ] 4. Auth service
-  - [ ] 4.1 Implement session middleware and helpers
+- [x] 4. Auth service
+  - [x] 4.1 Implement session middleware and helpers
     - Create `src/lib/auth/session.ts` with `getSession`, `createSession`, `destroySession` using `iron-session` with an `HttpOnly`, `Secure`, `SameSite=Lax` cookie
     - `createSession` destroys any existing session before creating a new one (session rotation on sign-in)
     - Session record written to `sessions` table; `expires_at = created_at + 7 days`
     - Mark file with `import 'server-only'`
     - _Requirements: 1.1, 1.4, 1.5, 1.6, 1.7_
-  - [ ] 4.2 Implement Next.js middleware for auth and security headers
+  - [x] 4.2 Implement Next.js middleware for auth and security headers
     - Create `src/middleware.ts` that:
       1. Injects security headers on all responses: `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`
       2. Checks for a valid session on all protected routes and redirects unauthenticated requests to `/signin`
     - Replaces per-route `requireAuth` guards
     - _Requirements: 1.1, 12.1, 12.4_
-  - [ ] 4.3 Implement rate limiter utility
+  - [x] 4.3 Implement rate limiter utility
     - Create `src/lib/rateLimiter.ts` with a `checkRateLimit(key, maxRequests, windowSeconds)` function backed by the `rate_limit_buckets` table (or an in-memory LRU for local dev)
     - Apply to sign-in (10/min/IP), invite generation (5/hr/user), and registration (5/hr/IP)
     - _Requirements: 1.8, 1.9, 7.9_
-  - [ ] 4.4 Implement Zod schemas for auth routes
+  - [x] 4.4 Implement Zod schemas for auth routes
     - Create `src/lib/schemas/auth.ts` with Zod schemas for sign-in body, registration body, and invite request
     - _Requirements: 12.3_
-  - [ ] 4.5 Implement API response helpers
+  - [x] 4.5 Implement API response helpers
     - Create `src/lib/api/response.ts` with `ok<T>(data)` and `err(code, message, status)` typed helpers
     - _Requirements: 12.7_
-  - [ ] 4.6 Write property test for session expiry
+  - [x] 4.6 Write property test for session expiry
     - **Property 4: Session expiry is at least 7 days**
     - **Validates: Requirements 1.5**
     - File: `src/__tests__/property/auth.property.ts`
-  - [ ] 4.7 Implement `POST /api/auth/signin` route
+  - [x] 4.7 Implement `POST /api/auth/signin` route
     - Validate body with Zod schema; compare with bcrypt (cost factor ≥ 12); perform session rotation on success; return 401 with generic message on failure; enforce rate limit
     - _Requirements: 1.2, 1.3, 1.7, 1.8_
-  - [ ] 4.8 Write property test for sign-in/sign-out round trip and invalid credentials
+  - [x] 4.8 Write property test for sign-in/sign-out round trip and invalid credentials
     - **Property 2: Sign-in / sign-out round trip invalidates session**
     - **Property 3: Invalid credentials never produce a session**
     - **Validates: Requirements 1.2, 1.3, 1.4**
     - File: `src/__tests__/property/auth.property.ts`
-  - [ ] 4.9 Implement `POST /api/auth/signout` and `GET /api/auth/session` routes
+  - [x] 4.9 Implement `POST /api/auth/signout` and `GET /api/auth/session` routes
     - Signout destroys session cookie and deletes session record from DB
     - Session route returns current user info or 401
     - _Requirements: 1.4_
-  - [ ] 4.10 Implement invitation generation: `POST /api/auth/invite`
+  - [x] 4.10 Implement invitation generation: `POST /api/auth/invite`
     - Require authenticated session; enforce rate limit; generate UUID token; persist to `invitations` with `expires_at = now + 72h`; return invitation link
     - _Requirements: 7.1, 1.9_
-  - [ ] 4.11 Write property test for invitation token uniqueness and expiry
+  - [x] 4.11 Write property test for invitation token uniqueness and expiry
     - **Property 19: Invitation tokens are unique and expire in 72 hours**
     - **Validates: Requirements 7.1**
     - File: `src/__tests__/property/invitations.property.ts`
-  - [ ] 4.12 Implement `POST /api/auth/register` route
+  - [x] 4.12 Implement `POST /api/auth/register` route
     - Validate body with Zod schema; enforce rate limit; validate invitation token using constant-time comparison; validate password length ≥ 8; hash password with bcrypt (cost ≥ 12); create user; mark token as used
     - Return 410 for expired/used tokens; 400 for short passwords; 429 for rate limit
     - _Requirements: 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9_
-  - [ ] 4.13 Write property tests for registration validation
+  - [x] 4.13 Write property tests for registration validation
     - **Property 20: Invitation token is invalidated after successful registration**
     - **Property 21: Expired or used invitation tokens are rejected**
     - **Property 22: Short passwords are rejected at registration**
     - **Property 23: Passwords are stored as hashes, never plaintext**
     - **Validates: Requirements 7.3, 7.4, 7.5, 7.6**
     - File: `src/__tests__/property/invitations.property.ts`
-  - [ ] 4.14 Write unit tests for auth service
+  - [x] 4.14 Write unit tests for auth service
     - Test sign-in with known credentials, session cookie attributes, session rotation, signout, invite generation, registration edge cases, rate limiting, Zod validation errors
     - File: `src/__tests__/unit/auth.test.ts`
     - _Requirements: 1.1–1.9, 7.1–7.9_
 
-- [ ] 5. Checkpoint — Ensure all auth and object store tests pass
+- [x] 5. Checkpoint — Ensure all auth and object store tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Media upload API
-  - [ ] 6.1 Implement file validation utility
+- [x] 6. Media upload API
+  - [x] 6.1 Implement file validation utility
     - Create `src/lib/upload/validateFile.ts` that checks MIME type against allowed set and rejects files > 200 MB
     - Return typed `{ ok: true }` or `{ ok: false, error: { code, message } }`
     - _Requirements: 2.1, 2.2, 2.3_
-  - [ ] 6.2 Implement Zod schemas for upload routes
+  - [x] 6.2 Implement Zod schemas for upload routes
     - Create `src/lib/schemas/upload.ts` with Zod schemas for presign request body (filename, contentType, fileSize) and confirm request body (mediaId)
     - _Requirements: 12.3_
-  - [ ] 6.3 Write property test for file validation
+  - [x] 6.3 Write property test for file validation
     - **Property 5: File validation rejects invalid inputs**
     - **Validates: Requirements 2.1, 2.2, 2.3**
     - File: `src/__tests__/property/upload.property.ts`
-  - [ ] 6.4 Implement `POST /api/upload/presign` route
+  - [x] 6.4 Implement `POST /api/upload/presign` route
     - Require auth; validate body with Zod schema; run `validateFile`; call `objectStore.generatePresignedPutUrl` with 900s expiry, Content-Type, and Content-Length constraints; create `pending` media record in DB; return `{ uploadUrl, mediaId }`
     - _Requirements: 2.4, 2.6, 2.12_
-  - [ ] 6.5 Write property test for presigned URL expiry
+  - [x] 6.5 Write property test for presigned URL expiry
     - **Property 6: Presigned PUT URLs expire within 15 minutes**
     - **Validates: Requirements 2.6**
     - File: `src/__tests__/property/upload.property.ts`
-  - [ ] 6.6 Implement `POST /api/upload/confirm` route
+  - [x] 6.6 Implement `POST /api/upload/confirm` route
     - Require auth; validate body with Zod schema; look up pending media record by `mediaId`; call `objectStore.headObject` to verify upload; set `status = active`; return media record
     - Return 404 if not found, 409 if already active
     - _Requirements: 2.7_
-  - [ ] 6.7 Implement stale pending media cleanup job
+  - [x] 6.7 Implement stale pending media cleanup job
     - Create `src/lib/upload/cleanupPending.ts` that deletes `pending` media records and their S3 objects older than 1 hour
     - Wire as a cron route (`/api/cron/cleanup-pending`) protected by a secret header, or as a Lambda scheduled event
     - _Requirements: 2.13_
-  - [ ] 6.8 Write property test for upload confirm metadata
+  - [x] 6.8 Write property test for upload confirm metadata
     - **Property 7: Upload confirm persists complete metadata**
     - **Validates: Requirements 2.7**
     - File: `src/__tests__/property/upload.property.ts`
-  - [ ] 6.9 Write unit tests for upload routes
+  - [x] 6.9 Write unit tests for upload routes
     - Test presign with valid/invalid files, Content-Type/Content-Length constraints, confirm with known media IDs, cleanup job, error cases
     - File: `src/__tests__/unit/upload.test.ts`
     - _Requirements: 2.1–2.7, 2.12, 2.13_
