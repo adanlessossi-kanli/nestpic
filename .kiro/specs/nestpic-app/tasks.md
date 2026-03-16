@@ -301,57 +301,57 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - Validate token on page load (GET invitation record); show form if valid; POST to `/api/auth/register`; display 410 error for expired/used tokens
     - _Requirements: 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 17. Playwright E2E test suite
-  - [ ] 17.1 Set up Playwright config and test infrastructure
+- [x] 17. Playwright E2E test suite
+  - [x] 17.1 Set up Playwright config and test infrastructure
     - Create `playwright.config.ts` with `baseURL: 'http://localhost:3000'`, `screenshot: 'only-on-failure'`, `trace: 'on-first-retry'`, `reporter: [['html']]`, and a `webServer` entry that starts the Next.js dev server
     - Set `globalSetup` to `./scripts/seed-test-users.ts`
     - _Requirements: 11.1, 11.9, 11.10, 11.13_
-  - [ ] 17.2 Implement test user seed script and auth state setup
+  - [x] 17.2 Implement test user seed script and auth state setup
     - Create `scripts/seed-test-users.ts` that connects to the local PostgreSQL instance and inserts known `Test_User` accounts (one per E2E test file for isolation) before the suite runs
     - Save authenticated browser state to `e2e/.auth/user.json` using Playwright's `browser.newContext()` + `storageState` so tests can reuse auth without re-logging in
     - _Requirements: 11.1, 11.12, 11.14_
-  - [ ] 17.3 Create Docker Compose files for local dev and E2E testing
+  - [x] 17.3 Create Docker Compose files for local dev and E2E testing
     - Create `docker-compose.yml` with services: `postgres` (PostgreSQL 15 with health check), `swift` (OpenStack Swift with health check), and optional `thumbnail-worker`
     - Create `docker-compose.test.yml` with isolated `postgres-test` and `swift-test` services on different ports for E2E test isolation
     - _Requirements: 10.9, 10.10, 11.15_
-  - [ ] 17.4 Implement Page Object Model classes
+  - [x] 17.4 Implement Page Object Model classes
     - Create `e2e/pages/SignInPage.ts`, `FeedPage.ts`, `AlbumsPage.ts`, `UploadModal.ts`, `Lightbox.ts`, `InvitePage.ts`
     - Each class encapsulates selectors and interactions for its page/component
     - _Requirements: 11.11_
-  - [ ] 17.5 Write E2E test for authentication workflow
+  - [x] 17.5 Write E2E test for authentication workflow
     - Create `e2e/auth.e2e.ts`; use `test.use({ storageState })` for auth reuse within file; use `SignInPage` POM
     - **Property 27: E2E authentication workflow completes successfully**
     - Verify sign-in with valid credentials redirects to Feed; sign-out redirects to sign-in page; unauthenticated navigation to a protected route redirects to sign-in page
     - Clean up test data in `afterAll`
     - **Validates: Requirements 11.2**
-  - [ ] 17.6 Write E2E test for media upload workflow
+  - [x] 17.6 Write E2E test for media upload workflow
     - Create `e2e/upload.e2e.ts`; use `test.use({ storageState })`; use `UploadModal` POM
     - **Property 28: E2E upload workflow surfaces media in the feed**
     - Verify file selection, upload progress display, and uploaded item appearing in Feed
     - Clean up uploaded media in `afterAll`
     - **Validates: Requirements 11.3**
-  - [ ] 17.7 Write E2E test for family feed workflow
+  - [x] 17.7 Write E2E test for family feed workflow
     - Create `e2e/feed.e2e.ts`; use `test.use({ storageState })`; use `FeedPage` POM
     - **Property 29: E2E feed workflow supports browsing, pagination, and media opening**
     - Verify media items show thumbnails/uploader names/dates; scroll-to-bottom loads next page without full reload; clicking a media item opens lightbox or video player
     - **Validates: Requirements 11.4**
-  - [ ] 17.8 Write E2E test for album management workflow
+  - [x] 17.8 Write E2E test for album management workflow
     - Create `e2e/albums.e2e.ts`; use `test.use({ storageState })`; use `AlbumsPage` POM
     - **Property 30: E2E album management workflow covers full CRUD lifecycle**
     - Verify create album appears in list; add media appears in album view in reverse chron order; delete album removes it from list
     - Clean up created albums in `afterAll`
     - **Validates: Requirements 11.5**
-  - [ ] 17.9 Write E2E test for media viewing workflow
+  - [x] 17.9 Write E2E test for media viewing workflow
     - Create `e2e/media-viewing.e2e.ts`; use `test.use({ storageState })`; use `Lightbox` POM
     - **Property 31: E2E media viewing workflow supports lightbox navigation and video playback**
     - Verify photo opens in lightbox overlay; prev/next controls navigate between items; video opens with interactive play/pause controls
     - **Validates: Requirements 11.6**
-  - [ ] 17.10 Write E2E test for media deletion workflow
+  - [x] 17.10 Write E2E test for media deletion workflow
     - Create `e2e/deletion.e2e.ts`; use `test.use({ storageState })`; use `FeedPage` POM
     - **Property 32: E2E deletion workflow removes media from the feed**
     - Verify deletion confirmation prompt; confirmed deletion removes item from Feed
     - **Validates: Requirements 11.7**
-  - [ ] 17.11 Write E2E test for invitation workflow
+  - [x] 17.11 Write E2E test for invitation workflow
     - Create `e2e/invitations.e2e.ts`; use `test.use({ storageState })`; use `InvitePage` POM
     - **Property 33: E2E invitation workflow allows a guest to register**
     - Verify authenticated user generates invite link; guest follows link and sees registration form; valid submission creates account and signs in

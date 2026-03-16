@@ -1,0 +1,55 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nestpic
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d nestpic']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  swift:
+    image: fnndsc/docker-swift-onlyone:latest
+    environment:
+      SWIFT_DEFAULT_CONTAINER_POLICY: Policy-0
+    ports:
+      - '8080:8080'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:8080/info || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  thumbnail-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/nestpic
+      OBJECT_STORE_ENDPOINT: http://swift:8080
+      OBJECT_STORE_ACCESS_KEY: test
+      OBJECT_STORE_SECRET_KEY: test
+      OBJECT_STORE_BUCKET: nestpic
+    depends_on:
+      postgres:
+        condition: service_healthy
+      swift:
+        condition: service_healthy
+    profiles:
+      - worker
+
+volumes:
+  postgres_data:

@@ -1,0 +1,35 @@
+version: '3.9'
+
+# Isolated services for E2E test suite — separate ports from dev stack.
+services:
+  postgres-test:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nestpic_test
+    ports:
+      - '5433:5432'
+    volumes:
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d nestpic_test']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  swift-test:
+    image: fnndsc/docker-swift-onlyone:latest
+    environment:
+      SWIFT_DEFAULT_CONTAINER_POLICY: Policy-0
+    ports:
+      - '8081:8080'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:8080/info || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
