@@ -8,7 +8,7 @@ import * as bcrypt from 'bcrypt'
 import * as fs from 'fs'
 import * as path from 'path'
 
-const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/nestpic'
+const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5433/nestpic_test'
 const BASE_URL = 'http://localhost:3000'
 const AUTH_DIR = path.join(__dirname, '..', 'e2e', '.auth')
 
@@ -64,6 +64,51 @@ async function seedUsers(client: Client) {
   }
 }
 
+async function configureSwiftCors() {
+  const SWIFT_ENDPOINT = process.env.OBJECT_STORE_ENDPOINT ?? 'http://localhost:8081'
+  const SWIFT_BUCKET = process.env.OBJECT_STORE_BUCKET ?? 'nestpic-test'
+
+  try {
+    // Authenticate with Swift TempAuth
+    const authRes = await fetch(`${SWIFT_ENDPOINT}/auth/v1.0`, {
+      headers: {
+        'X-Auth-User': 'admin:admin',
+        'X-Auth-Key': 'admin',
+      },
+    })
+
+    if (!authRes.ok) {
+      console.warn('Swift auth failed, skipping CORS configuration')
+      return
+    }
+
+    const authToken = authRes.headers.get('X-Auth-Token')
+    const storageUrl = authRes.headers.get('X-Storage-Url')
+
+    if (!authToken || !storageUrl) {
+      console.warn('Swift auth response missing token/URL, skipping CORS configuration')
+      return
+    }
+
+    // Create the container if it doesn't exist
+    await fetch(`${storageUrl}/${SWIFT_BUCKET}`, {
+      method: 'PUT',
+      headers: {
+        'X-Auth-Token': authToken,
+        'X-Container-Meta-Access-Control-Allow-Origin': '*',
+        'X-Container-Meta-Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, HEAD, OPTIONS',
+        'X-Container-Meta-Access-Control-Allow-Headers': 'Content-Type, X-Amz-Date, Authorization, X-Api-Key, X-Amz-Security-Token, X-Amz-Content-Sha256, Content-Length',
+        'X-Container-Meta-Access-Control-Expose-Headers': 'ETag',
+        'X-Container-Meta-Access-Control-Max-Age': '3000',
+      },
+    })
+
+    console.log(`Swift container '${SWIFT_BUCKET}' configured with CORS`)
+  } catch (e) {
+    console.warn('Failed to configure Swift CORS:', e)
+  }
+}
+
 async function saveAuthState(
   userKey: TestUserKey,
   user: { email: string; password: string }
@@ -95,6 +140,9 @@ export default async function globalSetup(_config: FullConfig) {
   } finally {
     await client.end()
   }
+
+  // Configure Swift container with CORS headers so browser uploads work
+  await configureSwiftCors()
 
   // Save authenticated state for each test user
   for (const [key, user] of Object.entries(TEST_USERS) as [TestUserKey, typeof TEST_USERS[TestUserKey]][]) {

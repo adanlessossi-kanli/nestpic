@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { cookies } from 'next/headers'
 import InfiniteScroll from '@/components/InfiniteScroll'
 import FeedLoading from './loading'
 import type { FeedItem } from '@/app/api/feed/route'
@@ -11,8 +12,13 @@ interface FeedResponse {
 
 async function FeedContent() {
   const session = await getValidSession()
+  const cookieStore = await cookies()
+  const cookieHeader = cookieStore.toString()
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
-  const res = await fetch(`${baseUrl}/api/feed`, { cache: 'no-store' })
+  const res = await fetch(`${baseUrl}/api/feed`, {
+    cache: 'no-store',
+    headers: { cookie: cookieHeader },
+  })
   if (!res.ok) throw new Error('Failed to load feed')
   const json: FeedResponse = await res.json()
   return <InfiniteScroll initialItems={json.items} initialCursor={json.nextCursor} currentUserId={session?.userId} />

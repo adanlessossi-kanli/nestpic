@@ -30,6 +30,7 @@ test.describe('Authentication workflow', () => {
     const page = await context.newPage()
 
     await page.goto('/feed')
+    await page.waitForLoadState('networkidle')
     await expect(page.getByRole('heading', { name: 'Family Feed' })).toBeVisible()
 
     // Sign out via nav button

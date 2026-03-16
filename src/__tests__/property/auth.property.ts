@@ -244,8 +244,8 @@ describe('Auth service properties', () => {
             return Promise.resolve({ rows: [] });
           });
 
-          // First call: existing session with a sessionId
-          const existingSession = makeFakeSession({ sessionId: existingSessionId });
+          // First call: existing session with a sessionId belonging to the same user
+          const existingSession = makeFakeSession({ sessionId: existingSessionId, userId: user.id });
           // Second call: fresh session to populate
           const freshSession = makeFakeSession();
           mockGetIronSession

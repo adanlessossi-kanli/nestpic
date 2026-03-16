@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { getValidSession } from '@/lib/auth/session';
 import { query } from '@/lib/db';
 import { addMediaToAlbumSchema } from '@/lib/schemas/albums';
 import { ok, err } from '@/lib/api/response';
@@ -7,6 +8,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getValidSession();
+  if (!session) {
+    return err('UNAUTHORIZED', 'Authentication required', 401);
+  }
+
   const { id: albumId } = await params;
 
   let body: unknown;

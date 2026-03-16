@@ -28,6 +28,7 @@ export async function getSession(): Promise<IronSession<SessionData>> {
 
 /**
  * Creates a new session for the given user, rotating any existing session first.
+ * Only rotates if the existing session belongs to the same user (prevents cross-user deletion).
  * Writes a record to the sessions table with expires_at = now + 7 days.
  */
 export async function createSession(user: {
@@ -35,9 +36,10 @@ export async function createSession(user: {
   email: string;
   name: string;
 }): Promise<void> {
-  // Session rotation: destroy any existing session before creating a new one
+  // Session rotation: destroy any existing session before creating a new one,
+  // but only if it belongs to the same user (prevents deleting another user's session)
   const session = await getSession();
-  if (session.sessionId) {
+  if (session.sessionId && session.userId === user.id) {
     await query('DELETE FROM sessions WHERE id = $1', [session.sessionId]);
     await session.destroy();
   }

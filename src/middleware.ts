@@ -29,7 +29,9 @@ function isProtectedRoute(pathname: string): boolean {
 function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+    process.env.NODE_ENV === 'production'
+      ? "default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+      : "default-src 'self'; img-src 'self' data: https: http:; media-src 'self' https: http:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss: http: https:;"
   );
   response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
   response.headers.set('X-Frame-Options', 'DENY');
@@ -54,7 +56,6 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
         return addSecurityHeaders(response);
       }
       const signinUrl = new URL('/signin', request.url);
-      signinUrl.searchParams.set('from', pathname);
       const response = NextResponse.redirect(signinUrl);
       return addSecurityHeaders(response);
     }

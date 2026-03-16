@@ -73,9 +73,9 @@ describe('Album property tests', () => {
           const json = await res.json()
 
           expect(res.status).toBe(200)
-          expect(json.name).toBe(name)
-          expect(json.created_by).toBe(userId)
-          expect(json.created_at).toBeDefined()
+          expect(json.data.name).toBe(name)
+          expect(json.data.created_by).toBe(userId)
+          expect(json.data.created_at).toBeDefined()
         }
       ),
       { numRuns: 100 }

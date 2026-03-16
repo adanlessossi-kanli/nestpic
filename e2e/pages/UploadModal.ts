@@ -11,11 +11,11 @@ export class UploadModal {
 
   constructor(private page: Page) {
     this.dialog = page.getByRole('dialog', { name: 'Upload Media' })
-    this.fileInput = page.locator('input[type="file"]')
-    this.uploadButton = page.getByRole('button', { name: 'Upload' })
-    this.cancelButton = page.getByRole('button', { name: 'Cancel' })
+    this.fileInput = this.dialog.locator('input[type="file"]')
+    this.uploadButton = this.dialog.getByRole('button', { name: 'Upload', exact: true })
+    this.cancelButton = this.dialog.getByRole('button', { name: 'Cancel' })
     this.progressBar = page.getByLabel(/Upload progress/)
-    this.errorAlert = page.getByRole('alert')
+    this.errorAlert = this.dialog.getByRole('alert')
   }
 
   async expectVisible() {

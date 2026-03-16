@@ -90,7 +90,7 @@ test.describe('Invitation workflow', () => {
 
     await guestPage.goto(inviteLink)
     // Should show an error (expired/used)
-    await expect(guestPage.getByRole('alert')).toBeVisible({ timeout: 5_000 })
+    await expect(guestPage.getByRole('alert').first()).toBeVisible({ timeout: 5_000 })
 
     await guestContext.close()
   })
@@ -99,11 +99,12 @@ test.describe('Invitation workflow', () => {
 test.afterAll(async () => {
   if (createdUserEmails.length === 0) return
   const client = new Client({
-    connectionString: process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/nestpic',
+    connectionString: process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5433/nestpic_test',
   })
   await client.connect()
   try {
     for (const email of createdUserEmails) {
+      await client.query('DELETE FROM invitations WHERE used_by = (SELECT id FROM users WHERE email = $1)', [email])
       await client.query('DELETE FROM users WHERE email = $1', [email])
     }
   } finally {

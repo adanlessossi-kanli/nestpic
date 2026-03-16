@@ -18,6 +18,10 @@ export async function checkRateLimit(
   maxRequests: number,
   windowSeconds: number
 ): Promise<boolean> {
+  // Allow disabling rate limiting in test environments
+  if (process.env.RATE_LIMIT_DISABLED === 'true') {
+    return true;
+  }
   if (process.env.NODE_ENV !== 'production') {
     return checkMemoryRateLimit(key, maxRequests, windowSeconds);
   }

@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { cookies } from 'next/headers'
 import AlbumInfiniteScroll from '@/components/AlbumInfiniteScroll'
 import AlbumLoading from '@/app/albums/[id]/loading'
 import type { FeedItem } from '@/app/api/feed/route'
@@ -11,8 +12,13 @@ interface AlbumResponse {
 
 async function AlbumContent({ id }: { id: string }) {
   const session = await getValidSession()
+  const cookieStore = await cookies()
+  const cookieHeader = cookieStore.toString()
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
-  const res = await fetch(`${baseUrl}/api/albums/${id}`, { cache: 'no-store' })
+  const res = await fetch(`${baseUrl}/api/albums/${id}`, {
+    cache: 'no-store',
+    headers: { cookie: cookieHeader },
+  })
   if (!res.ok) throw new Error('Failed to load album')
   const json: AlbumResponse = await res.json()
   return <AlbumInfiniteScroll initialItems={json.items} initialCursor={json.nextCursor} albumId={id} currentUserId={session?.userId} />

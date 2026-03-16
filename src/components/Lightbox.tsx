@@ -74,14 +74,18 @@ export default function Lightbox({ item, mediaUrl, items, onClose, onNavigate }:
         className="relative max-w-[90vw] max-h-[90vh] w-full h-full flex items-center justify-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <Image
-          src={mediaUrl}
-          alt={`Photo by ${item.uploaderName}`}
-          fill
-          className="object-contain"
-          sizes="90vw"
-          priority
-        />
+        {mediaUrl ? (
+          <Image
+            src={mediaUrl}
+            alt={`Photo by ${item.uploaderName}`}
+            fill
+            className="object-contain"
+            sizes="90vw"
+            priority
+          />
+        ) : (
+          <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
+        )}
       </div>
 
       {/* Next button */}

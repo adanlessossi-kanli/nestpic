@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { getValidSession } from '@/lib/auth/session';
 import { query } from '@/lib/db';
 import { getObjectStore } from '@/lib/objectStore';
 import { albumQuerySchema } from '@/lib/schemas/albums';
@@ -21,6 +22,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getValidSession();
+  if (!session) {
+    return err('UNAUTHORIZED', 'Authentication required', 401);
+  }
+
   const { id } = await params;
   const { searchParams } = request.nextUrl;
   const parsed = albumQuerySchema.safeParse({ cursor: searchParams.get('cursor') ?? undefined });
@@ -99,6 +105,11 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getValidSession();
+  if (!session) {
+    return err('UNAUTHORIZED', 'Authentication required', 401);
+  }
+
   const { id } = await params;
 
   // Check album exists

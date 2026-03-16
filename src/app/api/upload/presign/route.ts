@@ -10,8 +10,11 @@ import { ok, err } from '@/lib/api/response';
 const PRESIGN_EXPIRY_SECONDS = 900; // 15 minutes
 
 export async function POST(request: NextRequest) {
-  // Auth guaranteed by middleware; retrieve session for userId
-  const session = (await getValidSession())!;
+  // Auth check
+  const session = await getValidSession();
+  if (!session) {
+    return err('UNAUTHORIZED', 'Authentication required', 401);
+  }
 
   // Validate body
   const body = await request.json().catch(() => null);

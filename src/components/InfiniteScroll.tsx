@@ -129,16 +129,16 @@ export default function InfiniteScroll({ initialItems, initialCursor, currentUse
       )}
 
       {/* Media viewer overlay */}
-      {activeItem && mediaUrl && !isVideo && (
+      {activeItem && !isVideo && (
         <Lightbox
           item={activeItem}
-          mediaUrl={mediaUrl}
+          mediaUrl={mediaUrl ?? ''}
           items={items}
           onClose={closeViewer}
           onNavigate={navigateTo}
         />
       )}
-      {activeItem && mediaUrl && isVideo && (
+      {activeItem && isVideo && mediaUrl && (
         <VideoPlayer
           item={activeItem}
           mediaUrl={mediaUrl}
@@ -147,7 +147,12 @@ export default function InfiniteScroll({ initialItems, initialCursor, currentUse
           onNavigate={navigateTo}
         />
       )}
-      {activeItem && mediaLoading && (
+      {activeItem && mediaLoading && !isVideo && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
+          <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+      {activeItem && isVideo && !mediaUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
           <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
         </div>

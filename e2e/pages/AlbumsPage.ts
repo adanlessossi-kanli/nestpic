@@ -11,6 +11,7 @@ export class AlbumsPage {
 
   async goto() {
     await this.page.goto('/albums')
+    await this.page.waitForLoadState('networkidle')
   }
 
   async expectLoaded() {

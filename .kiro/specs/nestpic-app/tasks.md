@@ -358,7 +358,7 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - Clean up created user in `afterAll`
     - **Validates: Requirements 11.8**
 
-- [ ] 18. Final checkpoint — Ensure all tests pass
+- [x] 18. Final checkpoint — Ensure all tests pass
   - Run `vitest --run` and confirm all unit and property tests pass.
   - Run `npx playwright test` and confirm all E2E tests pass.
   - Ensure all tests pass, ask the user if questions arise.

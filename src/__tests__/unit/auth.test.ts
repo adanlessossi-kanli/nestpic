@@ -159,7 +159,7 @@ describe('Session rotation on sign-in', () => {
     const newSessionId = crypto.randomUUID();
     const userId = crypto.randomUUID();
 
-    const existingSession = makeSession({ sessionId: oldSessionId });
+    const existingSession = makeSession({ sessionId: oldSessionId, userId });
     const freshSession = makeSession();
     mockGetIronSession
       .mockResolvedValueOnce(existingSession)

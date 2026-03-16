@@ -5,12 +5,13 @@ export class FeedPage {
   readonly mediaCards: Locator
 
   constructor(private page: Page) {
-    this.uploadButton = page.getByRole('button', { name: 'Upload' })
+    this.uploadButton = page.getByRole('button', { name: 'Upload', exact: true }).first()
     this.mediaCards = page.locator('.grid > div')
   }
 
   async goto() {
     await this.page.goto('/feed')
+    await this.page.waitForLoadState('networkidle')
   }
 
   async expectLoaded() {

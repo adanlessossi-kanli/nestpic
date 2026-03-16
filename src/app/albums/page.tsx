@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import NewAlbumButton from '@/components/NewAlbumButton'
 import AlbumsLoading from './loading'
@@ -11,15 +12,21 @@ interface Album {
 }
 
 interface AlbumsResponse {
-  data: Album[]
+  data?: Album[]
 }
 
 async function AlbumsList() {
+  const cookieStore = await cookies()
+  const cookieHeader = cookieStore.toString()
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
-  const res = await fetch(`${baseUrl}/api/albums`, { cache: 'no-store' })
+  const res = await fetch(`${baseUrl}/api/albums`, {
+    cache: 'no-store',
+    headers: { cookie: cookieHeader },
+  })
   if (!res.ok) throw new Error('Failed to load albums')
-  const json: AlbumsResponse = await res.json()
-  const albums = json.data
+  const json = await res.json()
+  // API returns array directly
+  const albums: Album[] = Array.isArray(json) ? json : (json.data ?? [])
 
   if (albums.length === 0) {
     return <p className="text-gray-500">No albums yet. Create one to get started.</p>

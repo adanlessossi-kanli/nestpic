@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { getValidSession } from '@/lib/auth/session';
 import { query } from '@/lib/db';
 import { getObjectStore } from '@/lib/objectStore';
 import { feedQuerySchema } from '@/lib/schemas/feed';
@@ -28,6 +29,11 @@ export interface FeedItem {
 }
 
 export async function GET(request: NextRequest) {
+  const session = await getValidSession();
+  if (!session) {
+    return err('UNAUTHORIZED', 'Authentication required', 401);
+  }
+
   const { searchParams } = request.nextUrl;
   const parsed = feedQuerySchema.safeParse({ cursor: searchParams.get('cursor') ?? undefined });
   if (!parsed.success) {

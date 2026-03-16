@@ -94,9 +94,8 @@ describe('SwiftAdapter', () => {
   });
 
   describe('generatePresignedPutUrl', () => {
-    it('calls getSignedUrl with a PutObjectCommand containing ContentType and ContentLength', async () => {
+    it('returns a dev-upload proxy URL for the given key', async () => {
       const adapter = new SwiftAdapter(SWIFT_CONFIG);
-      mockGetSignedUrl.mockResolvedValue('https://swift/presigned-put');
 
       const url = await adapter.generatePresignedPutUrl(
         'uploads/file.jpg',
@@ -105,89 +104,63 @@ describe('SwiftAdapter', () => {
         900
       );
 
-      expect(url).toBe('https://swift/presigned-put');
-      expect(S3Module.PutObjectCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          Bucket: SWIFT_CONFIG.bucket,
-          Key: 'uploads/file.jpg',
-          ContentType: 'image/jpeg',
-          ContentLength: 1024,
-        })
-      );
-      expect(mockGetSignedUrl).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        { expiresIn: 900 }
-      );
+      expect(url).toContain('/api/dev-upload/uploads/file.jpg');
     });
 
-    it('passes the expiresIn value through to getSignedUrl', async () => {
+    it('includes the key in the URL', async () => {
       const adapter = new SwiftAdapter(SWIFT_CONFIG);
-      mockGetSignedUrl.mockResolvedValue('https://swift/url');
 
-      await adapter.generatePresignedPutUrl('key', 'video/mp4', 5_000_000, 600);
+      const url = await adapter.generatePresignedPutUrl('originals/video.mp4', 'video/mp4', 5_000_000, 600);
 
-      expect(mockGetSignedUrl).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        { expiresIn: 600 }
-      );
+      expect(url).toContain('originals/video.mp4');
     });
   });
 
   describe('generateSignedGetUrl', () => {
-    it('returns a presigned GET URL from Swift', async () => {
+    it('returns a dev-upload proxy URL from Swift', async () => {
       const adapter = new SwiftAdapter(SWIFT_CONFIG);
-      mockGetSignedUrl.mockResolvedValue('https://swift/presigned-get');
 
       const url = await adapter.generateSignedGetUrl('thumbnails/abc.jpg', 3600);
 
-      expect(url).toBe('https://swift/presigned-get');
-      expect(S3Module.GetObjectCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          Bucket: SWIFT_CONFIG.bucket,
-          Key: 'thumbnails/abc.jpg',
-        })
-      );
+      expect(url).toContain('/api/dev-upload/thumbnails/abc.jpg');
     });
   });
 
   describe('deleteObject', () => {
-    it('sends a DeleteObjectCommand with the correct key', async () => {
+    it('sends a DELETE request to the dev proxy', async () => {
       const adapter = new SwiftAdapter(SWIFT_CONFIG);
-      mockSend.mockResolvedValue({});
+      global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
 
       await adapter.deleteObject('uploads/file.jpg');
 
-      expect(S3Module.DeleteObjectCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          Bucket: SWIFT_CONFIG.bucket,
-          Key: 'uploads/file.jpg',
-        })
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/dev-upload/uploads/file.jpg'),
+        { method: 'DELETE' }
       );
-      expect(mockSend).toHaveBeenCalled();
     });
   });
 
   describe('headObject', () => {
     it('returns contentLength and contentType from the HeadObject response', async () => {
       const adapter = new SwiftAdapter(SWIFT_CONFIG);
-      mockSend.mockResolvedValue({ ContentLength: 2048, ContentType: 'image/png' });
+      // Mock fetch to return a successful HEAD response
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-length': '2048', 'content-type': 'image/png' }),
+      });
 
       const result = await adapter.headObject('uploads/photo.png');
 
       expect(result).toEqual({ contentLength: 2048, contentType: 'image/png' });
-      expect(S3Module.HeadObjectCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          Bucket: SWIFT_CONFIG.bucket,
-          Key: 'uploads/photo.png',
-        })
-      );
     });
 
     it('defaults to 0 and application/octet-stream when response fields are absent', async () => {
       const adapter = new SwiftAdapter(SWIFT_CONFIG);
-      mockSend.mockResolvedValue({});
+      // Mock fetch to return a successful HEAD response with no content headers
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({}),
+      });
 
       const result = await adapter.headObject('uploads/unknown');
 

@@ -91,8 +91,8 @@ describe('POST /api/albums', () => {
     const res = await POST(makeRequest('http://localhost/api/albums', 'POST', { name: 'My Album' }));
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.id).toBe(albumId);
-    expect(json.name).toBe('My Album');
+    expect(json.data.id).toBe(albumId);
+    expect(json.data.name).toBe('My Album');
   });
 
   it('persists name and created_by (userId) in DB INSERT', async () => {

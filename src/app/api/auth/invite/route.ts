@@ -5,8 +5,11 @@ import { query } from '@/lib/db';
 import { ok, err } from '@/lib/api/response';
 
 export async function POST(request: NextRequest) {
-  // Auth guaranteed by middleware; retrieve session for userId
-  const session = (await getValidSession())!;
+  // Auth check
+  const session = await getValidSession();
+  if (!session) {
+    return err('UNAUTHORIZED', 'Authentication required', 401);
+  }
 
   // Rate limit: 5 invitations per user per hour
   const allowed = await checkRateLimit(`invite:user:${session.userId}`, 5, 3600);
