@@ -274,13 +274,13 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - **Validates: Requirements 1.1**
     - File: `src/__tests__/property/auth.property.ts`
 
-- [ ] 14. Responsive layout
-  - [ ] 14.1 Implement `<MediaGrid>` component with responsive CSS grid
+- [x] 14. Responsive layout
+  - [x] 14.1 Implement `<MediaGrid>` component with responsive CSS grid
     - Create `src/components/MediaGrid.tsx` using CSS Grid: 1 column < 768px, 2 columns 768–1279px, 3+ columns ≥ 1280px
     - Use Tailwind or CSS modules with `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
     - Use `next/image` for all thumbnail rendering (automatic optimization, lazy loading, responsive sizes)
     - _Requirements: 8.1, 8.2, 8.3, 8.4_
-  - [ ] 14.2 Implement global layout and navigation
+  - [x] 14.2 Implement global layout and navigation
     - Create `app/layout.tsx` with responsive nav bar (hamburger on mobile, horizontal on desktop)
     - Links: Feed, Albums, Invite; sign-out button
     - _Requirements: 8.1_

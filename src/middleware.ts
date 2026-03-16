@@ -60,7 +60,9 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const response = NextResponse.next();
+  const response = NextResponse.next({
+    request: { headers: new Headers({ ...Object.fromEntries(request.headers), 'x-pathname': pathname }) },
+  });
   return addSecurityHeaders(response);
 }
 
