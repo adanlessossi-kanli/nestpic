@@ -21,6 +21,29 @@ const mockGetObjectStore = vi.fn().mockResolvedValue({
 });
 vi.mock('@/lib/objectStore', () => ({ getObjectStore: mockGetObjectStore }));
 
+vi.mock('sharp', () => {
+  const chain = {
+    resize: () => chain,
+    jpeg: () => chain,
+    toBuffer: () => Promise.resolve(Buffer.from([0xff, 0xd8, 0xff])),
+  };
+  return { default: () => chain };
+});
+
+vi.mock('fluent-ffmpeg', () => {
+  const chain: Record<string, unknown> = {};
+  chain.outputOptions = () => chain;
+  chain.output = () => chain;
+  chain.on = (event: string, cb: () => void) => {
+    if (event === 'end') setTimeout(cb, 0);
+    return chain;
+  };
+  chain.run = () => {};
+  return { default: () => chain };
+});
+
+vi.mock('fs', () => ({ default: { unlinkSync: () => {} } }));
+
 import {
   validateFile,
   ACCEPTED_MIME_TYPES,
@@ -37,7 +60,7 @@ function makeSession(overrides: Record<string, unknown> = {}) {
   });
 }
 
-const ACCEPTED_TYPES = [...ACCEPTED_MIME_TYPES];
+const ACCEPTED_TYPES = Array.from(ACCEPTED_MIME_TYPES);
 
 // ─── Property 5: File validation rejects invalid inputs ───────────────────────
 
@@ -212,11 +235,64 @@ describe('Upload property tests', () => {
           expect(json.media.status).toBe('active');
 
           // Verify the UPDATE was called
-          const updateCall = mockQuery.mock.calls.find(([sql]: [string]) =>
-            sql.includes('UPDATE media')
+          const updateCall = mockQuery.mock.calls.find((call: unknown[]) =>
+            typeof call[0] === 'string' && call[0].includes('UPDATE media')
           );
           expect(updateCall).toBeDefined();
           expect(updateCall![1]).toContain(mediaId);
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  // ─── Property 8: Thumbnail key uses dedicated prefix and is recorded in DB ───
+
+  // Feature: nestpic-app, Property 8: Thumbnail key uses dedicated prefix and is recorded in DB
+  it('Property 8: thumbnail key uses thumbnails/ prefix and is recorded in DB', async () => {
+    // Validates: Requirements 2.10
+    await fc.assert(
+      fc.asyncProperty(
+        fc.uuid(),
+        fc.constantFrom('image/jpeg', 'image/png', 'video/mp4'),
+        async (mediaId, contentType) => {
+          vi.clearAllMocks();
+
+          // Mock fetch: GET returns a small ArrayBuffer, PUT returns ok
+          global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+            if (init?.method === 'PUT') {
+              return Promise.resolve({ ok: true } as Response);
+            }
+            // GET — return a small ArrayBuffer
+            return Promise.resolve({
+              ok: true,
+              arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+            } as Response);
+          });
+
+          // objectStore mock: headObject, generateSignedGetUrl, generatePresignedPutUrl
+          mockGetObjectStore.mockResolvedValue({
+            headObject: vi.fn().mockResolvedValue({ contentLength: 8, contentType }),
+            generateSignedGetUrl: vi.fn().mockResolvedValue('https://cdn.example.com/signed'),
+            generatePresignedPutUrl: vi.fn().mockResolvedValue('https://s3.example.com/put'),
+            deleteObject: vi.fn(),
+          });
+
+          const { processMedia } = await import('@/lib/thumbnail/processor');
+          await processMedia(mediaId, `originals/${mediaId}`, contentType);
+
+          const expectedKey = `thumbnails/${mediaId}.jpg`;
+
+          // Find the UPDATE call
+          const updateCall = mockQuery.mock.calls.find((call: unknown[]) =>
+            typeof call[0] === 'string' && call[0].includes('UPDATE media SET thumbnail_key')
+          );
+
+          expect(updateCall).toBeDefined();
+          const [, params] = updateCall as [string, unknown[]];
+          expect(params[0]).toBe(expectedKey);
+          expect((params[0] as string).startsWith('thumbnails/')).toBe(true);
+          expect(params[1]).toBe(mediaId);
         }
       ),
       { numRuns: 100 }

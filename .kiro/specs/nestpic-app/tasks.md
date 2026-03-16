@@ -157,22 +157,22 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - File: `src/__tests__/unit/upload.test.ts`
     - _Requirements: 2.1–2.7, 2.12, 2.13_
 
-- [ ] 7. Thumbnail generator
-  - [ ] 7.1 Implement thumbnail processing logic
+- [x] 7. Thumbnail generator
+  - [x] 7.1 Implement thumbnail processing logic
     - Create `src/lib/thumbnail/processor.ts` with `processMedia(mediaId, s3Key, contentType)`:
       - Photos: use `sharp` to resize to max 400px longest side, output JPEG
       - Videos: use `fluent-ffmpeg` to extract first frame, then resize with `sharp`
       - Write result to `thumbnails/{mediaId}.jpg` via `objectStore.generatePresignedPutUrl` + PUT, then update `thumbnail_key` in DB
     - _Requirements: 2.8, 2.9, 2.10_
-  - [ ] 7.2 Write property test for thumbnail key prefix
+  - [x] 7.2 Write property test for thumbnail key prefix
     - **Property 8: Thumbnail key uses dedicated prefix and is recorded in DB**
     - **Validates: Requirements 2.10**
     - File: `src/__tests__/property/upload.property.ts`
-  - [ ] 7.3 Implement local background worker
+  - [x] 7.3 Implement local background worker
     - Create `src/lib/thumbnail/localWorker.ts` that polls the DB every 5s for `status = active` media with `thumbnail_key IS NULL` and calls `processMedia`
     - Start worker when `NODE_ENV !== production`
     - _Requirements: 2.8, 2.9, 10.1_
-  - [ ] 7.4 Implement Lambda handler with DLQ
+  - [x] 7.4 Implement Lambda handler with DLQ
     - Create `src/lambda/thumbnailHandler.ts` exporting a Lambda handler that receives S3 `ObjectCreated` events, extracts the object key, looks up the media record, and calls `processMedia`
     - Configure the Lambda with an SQS Dead Letter Queue in the infrastructure definition so failed events are captured for inspection and retry
     - _Requirements: 2.8, 2.9, 9.14_
