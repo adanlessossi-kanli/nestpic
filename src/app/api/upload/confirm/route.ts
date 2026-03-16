@@ -1,17 +1,10 @@
 import { NextRequest } from 'next/server';
 import { query } from '@/lib/db';
-import { getValidSession } from '@/lib/auth/session';
 import { getObjectStore } from '@/lib/objectStore';
 import { confirmSchema } from '@/lib/schemas/upload';
 import { ok, err } from '@/lib/api/response';
 
 export async function POST(request: NextRequest) {
-  // Auth check
-  const session = await getValidSession();
-  if (!session) {
-    return err('UNAUTHORIZED', 'Authentication required', 401);
-  }
-
   // Validate body
   const body = await request.json().catch(() => null);
   const parsed = confirmSchema.safeParse(body);

@@ -22,11 +22,6 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getValidSession();
-  if (!session) {
-    return err('UNAUTHORIZED', 'Authentication required', 401);
-  }
-
   const { id } = await params;
 
   const result = await query<MediaRow>(
@@ -72,10 +67,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getValidSession();
-  if (!session) {
-    return err('UNAUTHORIZED', 'Authentication required', 401);
-  }
+  // Auth guaranteed by middleware; retrieve session for ownership check
+  const session = (await getValidSession())!;
 
   const { id } = await params;
 

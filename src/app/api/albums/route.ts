@@ -12,10 +12,8 @@ interface AlbumRow {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getValidSession();
-  if (!session) {
-    return err('UNAUTHORIZED', 'Authentication required', 401);
-  }
+  // Auth guaranteed by middleware; retrieve session for userId
+  const session = (await getValidSession())!;
 
   let body: unknown;
   try {
@@ -42,11 +40,6 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  const session = await getValidSession();
-  if (!session) {
-    return err('UNAUTHORIZED', 'Authentication required', 401);
-  }
-
   const result = await query<AlbumRow>(
     `SELECT id, name, created_by, created_at
      FROM albums

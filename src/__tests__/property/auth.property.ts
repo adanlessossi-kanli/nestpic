@@ -179,6 +179,48 @@ describe('Auth service properties', () => {
     );
   });
 
+  // Feature: nestpic-app, Property 1: Unauthenticated requests to protected routes are redirected
+  it('Property 1: unauthenticated requests to page-level protected routes are redirected to /signin', async () => {
+    // Validates: Requirements 1.1
+    const PAGE_PROTECTED_ROUTES = ['/feed', '/albums'];
+
+    await fc.assert(
+      fc.asyncProperty(
+        // Pick a protected page route, optionally with a sub-path
+        fc.constantFrom(...PAGE_PROTECTED_ROUTES).chain((base) =>
+          fc.oneof(
+            fc.constant(base),
+            fc.string({ minLength: 0, maxLength: 30 })
+              .map((suffix) => `${base}/${suffix.replace(/[^a-z0-9-_]/gi, '')}`)
+          )
+        ),
+        async (pathname) => {
+          vi.clearAllMocks();
+
+          // No session — getIronSession returns an object with no sessionId/userId
+          mockGetIronSession.mockResolvedValue({
+            save: vi.fn(),
+            destroy: vi.fn(),
+          });
+
+          const { NextRequest } = await import('next/server');
+          const { middleware } = await import('@/middleware');
+
+          const req = new NextRequest(`http://localhost${pathname}`);
+          const response = await middleware(req);
+
+          // Must be a redirect (302 or 307)
+          expect([302, 307]).toContain(response.status);
+
+          // Must redirect to /signin
+          const location = response.headers.get('location') ?? '';
+          expect(location).toContain('/signin');
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
   // Feature: nestpic-app, Property 34: Sign-in session rotation issues a new session ID
   it('Property 34: createSession destroys existing session before creating a new one', async () => {
     await fc.assert(

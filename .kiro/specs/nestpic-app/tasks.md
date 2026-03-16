@@ -264,12 +264,12 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - Add delete button to media cards (visible only for uploader); clicking opens a confirmation dialog; on confirm, call `DELETE /api/media/:id` and remove item from UI state
     - _Requirements: 6.1, 6.3_
 
-- [ ] 13. Unauthenticated route protection
-  - [ ] 13.1 Verify Next.js middleware covers all protected routes
+- [x] 13. Unauthenticated route protection
+  - [x] 13.1 Verify Next.js middleware covers all protected routes
     - Confirm `src/middleware.ts` (task 4.2) matcher config covers all routes under `/api/feed`, `/api/media`, `/api/albums`, `/api/upload`, `/api/auth/invite`
     - Remove any redundant per-route `requireAuth` guards that are now handled by middleware
     - _Requirements: 1.1, 12.4_
-  - [ ] 13.2 Write property test for unauthenticated redirect
+  - [x] 13.2 Write property test for unauthenticated redirect
     - **Property 1: Unauthenticated requests to protected routes are redirected**
     - **Validates: Requirements 1.1**
     - File: `src/__tests__/property/auth.property.ts`
