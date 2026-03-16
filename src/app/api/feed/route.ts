@@ -15,12 +15,14 @@ interface MediaRow {
   s3_key: string;
   uploaded_at: Date;
   uploader_name: string;
+  uploader_id: string;
 }
 
 export interface FeedItem {
   id: string;
   thumbnailUrl: string | null;
   uploaderName: string;
+  uploaderId: string;
   uploadedAt: string;
   contentType: string;
   s3Key: string;
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
   if (cursor) {
     sql = `
       SELECT m.id, m.thumbnail_key, m.content_type, m.s3_key, m.uploaded_at,
-             u.name AS uploader_name
+             u.name AS uploader_name, m.uploader_id
       FROM media m
       JOIN users u ON u.id = m.uploader_id
       WHERE m.status = 'active'
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
   } else {
     sql = `
       SELECT m.id, m.thumbnail_key, m.content_type, m.s3_key, m.uploaded_at,
-             u.name AS uploader_name
+             u.name AS uploader_name, m.uploader_id
       FROM media m
       JOIN users u ON u.id = m.uploader_id
       WHERE m.status = 'active'
@@ -86,6 +88,7 @@ export async function GET(request: NextRequest) {
         id: row.id,
         thumbnailUrl,
         uploaderName: row.uploader_name,
+        uploaderId: row.uploader_id,
         uploadedAt: row.uploaded_at instanceof Date
           ? row.uploaded_at.toISOString()
           : String(row.uploaded_at),

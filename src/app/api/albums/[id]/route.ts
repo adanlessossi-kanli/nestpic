@@ -15,6 +15,7 @@ interface AlbumMediaRow {
   s3_key: string;
   uploaded_at: Date;
   uploader_name: string;
+  uploader_id: string;
 }
 
 export async function GET(
@@ -41,7 +42,7 @@ export async function GET(
   if (cursor) {
     sql = `
       SELECT m.id, m.thumbnail_key, m.content_type, m.s3_key, m.uploaded_at,
-             u.name AS uploader_name
+             u.name AS uploader_name, m.uploader_id
       FROM album_media am
       JOIN media m ON m.id = am.media_id
       JOIN users u ON u.id = m.uploader_id
@@ -55,7 +56,7 @@ export async function GET(
   } else {
     sql = `
       SELECT m.id, m.thumbnail_key, m.content_type, m.s3_key, m.uploaded_at,
-             u.name AS uploader_name
+             u.name AS uploader_name, m.uploader_id
       FROM album_media am
       JOIN media m ON m.id = am.media_id
       JOIN users u ON u.id = m.uploader_id
@@ -85,6 +86,7 @@ export async function GET(
         id: row.id,
         thumbnailUrl,
         uploaderName: row.uploader_name,
+        uploaderId: row.uploader_id,
         uploadedAt: row.uploaded_at instanceof Date
           ? row.uploaded_at.toISOString()
           : String(row.uploaded_at),

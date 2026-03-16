@@ -251,16 +251,16 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - Pass current media list for prev/next navigation context
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 12. Media deletion API and UI
-  - [ ] 12.1 Implement `DELETE /api/media/:id` route
+- [x] 12. Media deletion API and UI
+  - [x] 12.1 Implement `DELETE /api/media/:id` route
     - Require auth; verify `uploader_id = session.userId` (return 403 otherwise); delete `s3_key` and `thumbnail_key` from object store; delete `album_media` rows; delete `media` record
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
-  - [ ] 12.2 Write property tests for media deletion
+  - [x] 12.2 Write property tests for media deletion
     - **Property 17: Media deletion removes all traces**
     - **Property 18: Non-owner cannot delete media**
     - **Validates: Requirements 6.2, 6.3, 6.4**
     - File: `src/__tests__/property/media.property.ts`
-  - [ ] 12.3 Implement delete confirmation UI
+  - [x] 12.3 Implement delete confirmation UI
     - Add delete button to media cards (visible only for uploader); clicking opens a confirmation dialog; on confirm, call `DELETE /api/media/:id` and remove item from UI state
     - _Requirements: 6.1, 6.3_
 

@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import InfiniteScroll from '@/components/InfiniteScroll'
 import FeedLoading from './loading'
 import type { FeedItem } from '@/app/api/feed/route'
+import { getValidSession } from '@/lib/auth/session'
 
 interface FeedResponse {
   items: FeedItem[]
@@ -9,11 +10,12 @@ interface FeedResponse {
 }
 
 async function FeedContent() {
+  const session = await getValidSession()
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
   const res = await fetch(`${baseUrl}/api/feed`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load feed')
   const json: FeedResponse = await res.json()
-  return <InfiniteScroll initialItems={json.items} initialCursor={json.nextCursor} />
+  return <InfiniteScroll initialItems={json.items} initialCursor={json.nextCursor} currentUserId={session?.userId} />
 }
 
 export default function FeedPage() {

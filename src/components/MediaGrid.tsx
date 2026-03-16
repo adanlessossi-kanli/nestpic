@@ -5,6 +5,8 @@ interface MediaGridProps {
   items: FeedItem[]
   nextCursor?: string | null
   onItemClick?: (item: FeedItem) => void
+  currentUserId?: string
+  onDelete?: (item: FeedItem) => void
 }
 
 function formatDate(iso: string): string {
@@ -15,7 +17,7 @@ function formatDate(iso: string): string {
   })
 }
 
-export default function MediaGrid({ items, onItemClick }: MediaGridProps) {
+export default function MediaGrid({ items, onItemClick, currentUserId, onDelete }: MediaGridProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {items.map((item) => (
@@ -43,6 +45,16 @@ export default function MediaGrid({ items, onItemClick }: MediaGridProps) {
           <div className="p-2 text-sm text-gray-700">
             <p className="font-medium">{item.uploaderName}</p>
             <p className="text-gray-500">{formatDate(item.uploadedAt)}</p>
+            {currentUserId && item.uploaderId === currentUserId && onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(item)}
+                className="text-sm text-red-600 hover:text-red-800 mt-1"
+                aria-label={`Delete media by ${item.uploaderName}`}
+              >
+                Delete
+              </button>
+            )}
           </div>
         </div>
       ))}

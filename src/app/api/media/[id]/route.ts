@@ -59,3 +59,52 @@ export async function GET(
     thumbnailKey: row.thumbnail_key,
   });
 }
+
+interface DeleteMediaRow {
+  id: string;
+  uploader_id: string;
+  s3_key: string;
+  thumbnail_key: string | null;
+  status: string;
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getValidSession();
+  if (!session) {
+    return err('UNAUTHORIZED', 'Authentication required', 401);
+  }
+
+  const { id } = await params;
+
+  const result = await query<DeleteMediaRow>(
+    `SELECT id, uploader_id, s3_key, thumbnail_key, status
+     FROM media
+     WHERE id = $1 AND status = 'active'`,
+    [id]
+  );
+
+  if (result.rows.length === 0) {
+    return err('NOT_FOUND', 'Media not found', 404);
+  }
+
+  const row = result.rows[0];
+
+  if (session.userId !== row.uploader_id) {
+    return err('FORBIDDEN', 'You do not own this media', 403);
+  }
+
+  const objectStore = await getObjectStore();
+  await objectStore.deleteObject(row.s3_key);
+
+  if (row.thumbnail_key) {
+    await objectStore.deleteObject(row.thumbnail_key);
+  }
+
+  await query('DELETE FROM album_media WHERE media_id = $1', [id]);
+  await query('DELETE FROM media WHERE id = $1', [id]);
+
+  return ok({ deleted: true });
+}

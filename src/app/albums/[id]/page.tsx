@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import AlbumInfiniteScroll from '@/components/AlbumInfiniteScroll'
 import AlbumLoading from '@/app/albums/[id]/loading'
 import type { FeedItem } from '@/app/api/feed/route'
+import { getValidSession } from '@/lib/auth/session'
 
 interface AlbumResponse {
   items: FeedItem[]
@@ -9,11 +10,12 @@ interface AlbumResponse {
 }
 
 async function AlbumContent({ id }: { id: string }) {
+  const session = await getValidSession()
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
   const res = await fetch(`${baseUrl}/api/albums/${id}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load album')
   const json: AlbumResponse = await res.json()
-  return <AlbumInfiniteScroll initialItems={json.items} initialCursor={json.nextCursor} albumId={id} />
+  return <AlbumInfiniteScroll initialItems={json.items} initialCursor={json.nextCursor} albumId={id} currentUserId={session?.userId} />
 }
 
 export default async function AlbumPage({ params }: { params: Promise<{ id: string }> }) {
