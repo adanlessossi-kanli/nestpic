@@ -200,35 +200,35 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - Append new items without full page reload
     - _Requirements: 3.5_
 
-- [ ] 9. Album management API and UI
-  - [ ] 9.1 Implement album CRUD API routes
+- [x] 9. Album management API and UI
+  - [x] 9.1 Implement album CRUD API routes
     - `POST /api/albums` — validate body with Zod schema; validate name (non-empty, ≤ 100 chars), persist album, return record
     - `GET /api/albums` — list all albums for the family (all users), return array
     - `GET /api/albums/:id` — paginated album contents (30/page, reverse chron), generate signed URLs; validate query params with Zod
     - `POST /api/albums/:id/media` — validate body with Zod; add media to album (insert into `album_media`)
     - `DELETE /api/albums/:id` — delete album record only, preserve media
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 12.3_
-  - [ ] 9.2 Write property tests for album operations
+  - [x] 9.2 Write property tests for album operations
     - **Property 13: Album creation persists correct metadata**
     - **Property 14: Album name validation rejects invalid names**
     - **Property 15: Media can belong to multiple albums simultaneously**
     - **Property 16: Album deletion preserves media**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.6**
     - File: `src/__tests__/property/albums.property.ts`
-  - [ ] 9.3 Write unit tests for album routes
+  - [x] 9.3 Write unit tests for album routes
     - Test create/list/delete with known inputs, validation edge cases (empty name, 101-char name)
     - File: `src/__tests__/unit/albums.test.ts`
     - _Requirements: 4.1–4.6_
-  - [ ] 9.4 Implement albums list page (`app/albums/page.tsx`)
+  - [x] 9.4 Implement albums list page (`app/albums/page.tsx`)
     - Server component renders list of albums with name and creation date; "New Album" button opens create form
     - Wrap with React Suspense boundary and error boundary
     - _Requirements: 4.1, 4.2_
-  - [ ] 9.5 Implement album detail page (`app/albums/[id]/page.tsx`)
+  - [x] 9.5 Implement album detail page (`app/albums/[id]/page.tsx`)
     - Server component fetches album contents; renders `<MediaGrid>` using `next/image` for thumbnails; same infinite scroll as feed
     - Wrap with React Suspense boundary and error boundary
     - _Requirements: 4.5_
 
-- [ ] 10. Checkpoint — Ensure all API and album tests pass
+- [x] 10. Checkpoint — Ensure all API and album tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 11. Media viewing (lightbox and video player)
