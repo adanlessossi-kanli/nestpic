@@ -1,0 +1,377 @@
+# Implementation Plan: Nestpic App
+
+## Overview
+
+Incremental implementation of the Nestpic family photo/video sharing platform using Next.js (App Router), TypeScript, PostgreSQL (RDS), and S3/OpenStack Swift. Each task builds on the previous, ending with a fully wired application.
+
+## Tasks
+
+- [ ] 1. Project scaffolding and environment setup
+  - Bootstrap Next.js 14 App Router project with TypeScript (`strict: true` in `tsconfig.json`)
+  - Install dependencies: `pg`, `bcrypt`, `iron-session`, `sharp`, `fluent-ffmpeg`, `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@aws-sdk/client-secrets-manager`, `fast-check`, `vitest`, `pg-mem`, `@playwright/test`, `zod`, `server-only`
+  - Create `.env.example` (committed to repo) with all required env var names and placeholder values: `NODE_ENV`, `OBJECT_STORE_ENDPOINT`, `OBJECT_STORE_ACCESS_KEY`, `OBJECT_STORE_SECRET_KEY`, `OBJECT_STORE_BUCKET`, `DATABASE_URL`, `SESSION_SECRET`, `CDN_BASE_URL`, `CDN_KEY_PAIR_ID`, `CDN_PRIVATE_KEY`, `SECRETS_MANAGER_SECRET_ARN`
+  - Create `.env.local` (gitignored) for actual local values
+  - Set up `vitest.config.ts` with test environment and path aliases
+  - Enable `strict: true` in `tsconfig.json`
+  - Add `package.json` scripts: `dev`, `db:migrate`, `db:seed`, `test` (`vitest --run`), `test:e2e` (`playwright test`)
+  - _Requirements: 10.7, 10.8, 10.11, 10.12, 12.5_
+
+- [ ] 2. Database schema and migrations
+  - [ ] 2.1 Create SQL migration files for all tables
+    - Write `migrations/001_initial.sql` with `users`, `sessions`, `invitations`, `media`, `albums`, `album_media`, `rate_limit_buckets` tables matching the data models in the design
+    - Add indexes on `media.uploader_id`, `media.uploaded_at`, `album_media.album_id`, `sessions.user_id`, `sessions.expires_at`
+    - _Requirements: 9.2_
+  - [ ] 2.2 Create `src/lib/db.ts` database client
+    - Export a `pg.Pool` instance configured from `DATABASE_URL`
+    - Export a typed `query` helper
+    - Mark file with `import 'server-only'`
+    - _Requirements: 9.2, 9.7, 12.6_
+
+- [ ] 3. Object store abstraction
+  - [ ] 3.1 Implement `ObjectStore` interface and startup validation
+    - Create `src/lib/objectStore/types.ts` with the `ObjectStore` interface (`generatePresignedPutUrl` with `contentLength` param, `generateSignedGetUrl`, `deleteObject`, `headObject`)
+    - Create `src/lib/objectStore/index.ts` with a factory function that reads env vars (or fetches from Secrets Manager in production), throws a descriptive error if any are missing, and returns the correct adapter based on `NODE_ENV`
+    - Mark file with `import 'server-only'`
+    - _Requirements: 10.4, 10.7, 10.8, 12.6_
+  - [ ] 3.2 Implement AWS Secrets Manager integration
+    - Create `src/lib/secrets.ts` that fetches the production secrets JSON from Secrets Manager at startup (using `@aws-sdk/client-secrets-manager`) and caches the result
+    - Used by the ObjectStore factory and db client in production; falls back to env vars in development
+    - Mark file with `import 'server-only'`
+    - _Requirements: 9.13_
+  - [ ] 3.3 Write property test for ObjectStore env var validation
+    - **Property 25: Object store is configured from environment variables**
+    - **Property 26: Missing environment variables prevent startup**
+    - **Validates: Requirements 10.7, 10.8**
+    - File: `src/__tests__/property/config.property.ts`
+  - [ ] 3.4 Implement S3 adapter
+    - Create `src/lib/objectStore/s3Adapter.ts` implementing `ObjectStore` using `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner`
+    - Presigned PUT URLs use `PutObjectCommand` with `ContentType` and `ContentLengthRange` conditions; signed GET URLs use CloudFront signed URLs scoped to the specific key
+    - _Requirements: 2.4, 2.6, 2.12, 9.1, 9.5, 9.6_
+  - [ ] 3.5 Implement OpenStack Swift adapter
+    - Create `src/lib/objectStore/swiftAdapter.ts` implementing `ObjectStore` using the S3-compatible API of OpenStack Swift
+    - Reuse the same `@aws-sdk/client-s3` client pointed at the Swift endpoint
+    - _Requirements: 10.1, 10.2, 10.6_
+  - [ ] 3.6 Write unit tests for ObjectStore adapters
+    - Test presigned URL generation (including Content-Type/Content-Length constraints), signed URL scoping, delete, and headObject for both adapters using mocks
+    - File: `src/__tests__/unit/objectStore.test.ts`
+    - _Requirements: 10.4_
+
+- [ ] 4. Auth service
+  - [ ] 4.1 Implement session middleware and helpers
+    - Create `src/lib/auth/session.ts` with `getSession`, `createSession`, `destroySession` using `iron-session` with an `HttpOnly`, `Secure`, `SameSite=Lax` cookie
+    - `createSession` destroys any existing session before creating a new one (session rotation on sign-in)
+    - Session record written to `sessions` table; `expires_at = created_at + 7 days`
+    - Mark file with `import 'server-only'`
+    - _Requirements: 1.1, 1.4, 1.5, 1.6, 1.7_
+  - [ ] 4.2 Implement Next.js middleware for auth and security headers
+    - Create `src/middleware.ts` that:
+      1. Injects security headers on all responses: `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`
+      2. Checks for a valid session on all protected routes and redirects unauthenticated requests to `/signin`
+    - Replaces per-route `requireAuth` guards
+    - _Requirements: 1.1, 12.1, 12.4_
+  - [ ] 4.3 Implement rate limiter utility
+    - Create `src/lib/rateLimiter.ts` with a `checkRateLimit(key, maxRequests, windowSeconds)` function backed by the `rate_limit_buckets` table (or an in-memory LRU for local dev)
+    - Apply to sign-in (10/min/IP), invite generation (5/hr/user), and registration (5/hr/IP)
+    - _Requirements: 1.8, 1.9, 7.9_
+  - [ ] 4.4 Implement Zod schemas for auth routes
+    - Create `src/lib/schemas/auth.ts` with Zod schemas for sign-in body, registration body, and invite request
+    - _Requirements: 12.3_
+  - [ ] 4.5 Implement API response helpers
+    - Create `src/lib/api/response.ts` with `ok<T>(data)` and `err(code, message, status)` typed helpers
+    - _Requirements: 12.7_
+  - [ ] 4.6 Write property test for session expiry
+    - **Property 4: Session expiry is at least 7 days**
+    - **Validates: Requirements 1.5**
+    - File: `src/__tests__/property/auth.property.ts`
+  - [ ] 4.7 Implement `POST /api/auth/signin` route
+    - Validate body with Zod schema; compare with bcrypt (cost factor ≥ 12); perform session rotation on success; return 401 with generic message on failure; enforce rate limit
+    - _Requirements: 1.2, 1.3, 1.7, 1.8_
+  - [ ] 4.8 Write property test for sign-in/sign-out round trip and invalid credentials
+    - **Property 2: Sign-in / sign-out round trip invalidates session**
+    - **Property 3: Invalid credentials never produce a session**
+    - **Validates: Requirements 1.2, 1.3, 1.4**
+    - File: `src/__tests__/property/auth.property.ts`
+  - [ ] 4.9 Implement `POST /api/auth/signout` and `GET /api/auth/session` routes
+    - Signout destroys session cookie and deletes session record from DB
+    - Session route returns current user info or 401
+    - _Requirements: 1.4_
+  - [ ] 4.10 Implement invitation generation: `POST /api/auth/invite`
+    - Require authenticated session; enforce rate limit; generate UUID token; persist to `invitations` with `expires_at = now + 72h`; return invitation link
+    - _Requirements: 7.1, 1.9_
+  - [ ] 4.11 Write property test for invitation token uniqueness and expiry
+    - **Property 19: Invitation tokens are unique and expire in 72 hours**
+    - **Validates: Requirements 7.1**
+    - File: `src/__tests__/property/invitations.property.ts`
+  - [ ] 4.12 Implement `POST /api/auth/register` route
+    - Validate body with Zod schema; enforce rate limit; validate invitation token using constant-time comparison; validate password length ≥ 8; hash password with bcrypt (cost ≥ 12); create user; mark token as used
+    - Return 410 for expired/used tokens; 400 for short passwords; 429 for rate limit
+    - _Requirements: 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9_
+  - [ ] 4.13 Write property tests for registration validation
+    - **Property 20: Invitation token is invalidated after successful registration**
+    - **Property 21: Expired or used invitation tokens are rejected**
+    - **Property 22: Short passwords are rejected at registration**
+    - **Property 23: Passwords are stored as hashes, never plaintext**
+    - **Validates: Requirements 7.3, 7.4, 7.5, 7.6**
+    - File: `src/__tests__/property/invitations.property.ts`
+  - [ ] 4.14 Write unit tests for auth service
+    - Test sign-in with known credentials, session cookie attributes, session rotation, signout, invite generation, registration edge cases, rate limiting, Zod validation errors
+    - File: `src/__tests__/unit/auth.test.ts`
+    - _Requirements: 1.1–1.9, 7.1–7.9_
+
+- [ ] 5. Checkpoint — Ensure all auth and object store tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 6. Media upload API
+  - [ ] 6.1 Implement file validation utility
+    - Create `src/lib/upload/validateFile.ts` that checks MIME type against allowed set and rejects files > 200 MB
+    - Return typed `{ ok: true }` or `{ ok: false, error: { code, message } }`
+    - _Requirements: 2.1, 2.2, 2.3_
+  - [ ] 6.2 Implement Zod schemas for upload routes
+    - Create `src/lib/schemas/upload.ts` with Zod schemas for presign request body (filename, contentType, fileSize) and confirm request body (mediaId)
+    - _Requirements: 12.3_
+  - [ ] 6.3 Write property test for file validation
+    - **Property 5: File validation rejects invalid inputs**
+    - **Validates: Requirements 2.1, 2.2, 2.3**
+    - File: `src/__tests__/property/upload.property.ts`
+  - [ ] 6.4 Implement `POST /api/upload/presign` route
+    - Require auth; validate body with Zod schema; run `validateFile`; call `objectStore.generatePresignedPutUrl` with 900s expiry, Content-Type, and Content-Length constraints; create `pending` media record in DB; return `{ uploadUrl, mediaId }`
+    - _Requirements: 2.4, 2.6, 2.12_
+  - [ ] 6.5 Write property test for presigned URL expiry
+    - **Property 6: Presigned PUT URLs expire within 15 minutes**
+    - **Validates: Requirements 2.6**
+    - File: `src/__tests__/property/upload.property.ts`
+  - [ ] 6.6 Implement `POST /api/upload/confirm` route
+    - Require auth; validate body with Zod schema; look up pending media record by `mediaId`; call `objectStore.headObject` to verify upload; set `status = active`; return media record
+    - Return 404 if not found, 409 if already active
+    - _Requirements: 2.7_
+  - [ ] 6.7 Implement stale pending media cleanup job
+    - Create `src/lib/upload/cleanupPending.ts` that deletes `pending` media records and their S3 objects older than 1 hour
+    - Wire as a cron route (`/api/cron/cleanup-pending`) protected by a secret header, or as a Lambda scheduled event
+    - _Requirements: 2.13_
+  - [ ] 6.8 Write property test for upload confirm metadata
+    - **Property 7: Upload confirm persists complete metadata**
+    - **Validates: Requirements 2.7**
+    - File: `src/__tests__/property/upload.property.ts`
+  - [ ] 6.9 Write unit tests for upload routes
+    - Test presign with valid/invalid files, Content-Type/Content-Length constraints, confirm with known media IDs, cleanup job, error cases
+    - File: `src/__tests__/unit/upload.test.ts`
+    - _Requirements: 2.1–2.7, 2.12, 2.13_
+
+- [ ] 7. Thumbnail generator
+  - [ ] 7.1 Implement thumbnail processing logic
+    - Create `src/lib/thumbnail/processor.ts` with `processMedia(mediaId, s3Key, contentType)`:
+      - Photos: use `sharp` to resize to max 400px longest side, output JPEG
+      - Videos: use `fluent-ffmpeg` to extract first frame, then resize with `sharp`
+      - Write result to `thumbnails/{mediaId}.jpg` via `objectStore.generatePresignedPutUrl` + PUT, then update `thumbnail_key` in DB
+    - _Requirements: 2.8, 2.9, 2.10_
+  - [ ] 7.2 Write property test for thumbnail key prefix
+    - **Property 8: Thumbnail key uses dedicated prefix and is recorded in DB**
+    - **Validates: Requirements 2.10**
+    - File: `src/__tests__/property/upload.property.ts`
+  - [ ] 7.3 Implement local background worker
+    - Create `src/lib/thumbnail/localWorker.ts` that polls the DB every 5s for `status = active` media with `thumbnail_key IS NULL` and calls `processMedia`
+    - Start worker when `NODE_ENV !== production`
+    - _Requirements: 2.8, 2.9, 10.1_
+  - [ ] 7.4 Implement Lambda handler with DLQ
+    - Create `src/lambda/thumbnailHandler.ts` exporting a Lambda handler that receives S3 `ObjectCreated` events, extracts the object key, looks up the media record, and calls `processMedia`
+    - Configure the Lambda with an SQS Dead Letter Queue in the infrastructure definition so failed events are captured for inspection and retry
+    - _Requirements: 2.8, 2.9, 9.14_
+
+- [ ] 8. Family feed API and UI
+  - [ ] 8.1 Implement `GET /api/feed` route
+    - Require auth; query `media` where `status = active`, ordered by `uploaded_at DESC`, paginated at 30 items; join `users` for `uploader_name`; generate CloudFront signed URLs (3600s) for each `thumbnail_key`
+    - Accept `?cursor` (last `uploaded_at` ISO string) for cursor-based pagination
+    - Validate query params with Zod schema
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 12.3_
+  - [ ] 8.2 Write property tests for feed ordering and pagination
+    - **Property 9: Media listings are in reverse chronological order**
+    - **Property 10: Feed and album media items include required fields**
+    - **Property 11: Signed CDN URLs expire within 1 hour**
+    - **Property 12: Feed pagination returns at most 30 items per page**
+    - **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
+    - File: `src/__tests__/property/feed.property.ts`
+  - [ ] 8.3 Implement feed page UI (`app/feed/page.tsx`)
+    - Server component fetches first page; renders `<MediaGrid>` with thumbnail cards using `next/image` for automatic optimization and lazy loading; shows thumbnail, uploader name, upload date
+    - Wrap with React Suspense boundary and error boundary
+    - Each card links to media detail; loading skeleton shown while fetching
+    - _Requirements: 3.2, 3.6_
+  - [ ] 8.4 Implement infinite scroll client component
+    - Create `src/components/InfiniteScroll.tsx` using `IntersectionObserver` to detect bottom of list and fetch next page from `/api/feed?cursor=...`
+    - Append new items without full page reload
+    - _Requirements: 3.5_
+
+- [ ] 9. Album management API and UI
+  - [ ] 9.1 Implement album CRUD API routes
+    - `POST /api/albums` — validate body with Zod schema; validate name (non-empty, ≤ 100 chars), persist album, return record
+    - `GET /api/albums` — list all albums for the family (all users), return array
+    - `GET /api/albums/:id` — paginated album contents (30/page, reverse chron), generate signed URLs; validate query params with Zod
+    - `POST /api/albums/:id/media` — validate body with Zod; add media to album (insert into `album_media`)
+    - `DELETE /api/albums/:id` — delete album record only, preserve media
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 12.3_
+  - [ ] 9.2 Write property tests for album operations
+    - **Property 13: Album creation persists correct metadata**
+    - **Property 14: Album name validation rejects invalid names**
+    - **Property 15: Media can belong to multiple albums simultaneously**
+    - **Property 16: Album deletion preserves media**
+    - **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.6**
+    - File: `src/__tests__/property/albums.property.ts`
+  - [ ] 9.3 Write unit tests for album routes
+    - Test create/list/delete with known inputs, validation edge cases (empty name, 101-char name)
+    - File: `src/__tests__/unit/albums.test.ts`
+    - _Requirements: 4.1–4.6_
+  - [ ] 9.4 Implement albums list page (`app/albums/page.tsx`)
+    - Server component renders list of albums with name and creation date; "New Album" button opens create form
+    - Wrap with React Suspense boundary and error boundary
+    - _Requirements: 4.1, 4.2_
+  - [ ] 9.5 Implement album detail page (`app/albums/[id]/page.tsx`)
+    - Server component fetches album contents; renders `<MediaGrid>` using `next/image` for thumbnails; same infinite scroll as feed
+    - Wrap with React Suspense boundary and error boundary
+    - _Requirements: 4.5_
+
+- [ ] 10. Checkpoint — Ensure all API and album tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 11. Media viewing (lightbox and video player)
+  - [ ] 11.1 Implement `GET /api/media/:id` route
+    - Require auth; fetch media record; generate signed CDN URL (3600s) for `s3_key`; return media record with `media_url`
+    - _Requirements: 5.1, 5.2_
+  - [ ] 11.2 Write property test for signed CDN URL expiry on media view
+    - **Property 11: Signed CDN URLs expire within 1 hour**
+    - **Property 24: Signed URLs are scoped to a specific object key**
+    - **Validates: Requirements 3.3, 5.1, 9.6**
+    - File: `src/__tests__/property/urls.property.ts`
+  - [ ] 11.3 Implement lightbox component (`src/components/Lightbox.tsx`)
+    - Client component; renders full-resolution photo in an overlay; previous/next navigation using keyboard and button controls; close returns to feed/album without full reload
+    - _Requirements: 5.1, 5.3, 5.4_
+  - [ ] 11.4 Implement video player component (`src/components/VideoPlayer.tsx`)
+    - Client component using HTML5 `<video>` with play, pause, seek controls; source set to signed CDN URL
+    - _Requirements: 5.2_
+  - [ ] 11.5 Wire lightbox and video player into feed and album pages
+    - On thumbnail click, open `<Lightbox>` (photo) or `<VideoPlayer>` (video) as a modal overlay
+    - Pass current media list for prev/next navigation context
+    - _Requirements: 5.1, 5.2, 5.3, 5.4_
+
+- [ ] 12. Media deletion API and UI
+  - [ ] 12.1 Implement `DELETE /api/media/:id` route
+    - Require auth; verify `uploader_id = session.userId` (return 403 otherwise); delete `s3_key` and `thumbnail_key` from object store; delete `album_media` rows; delete `media` record
+    - _Requirements: 6.1, 6.2, 6.3, 6.4_
+  - [ ] 12.2 Write property tests for media deletion
+    - **Property 17: Media deletion removes all traces**
+    - **Property 18: Non-owner cannot delete media**
+    - **Validates: Requirements 6.2, 6.3, 6.4**
+    - File: `src/__tests__/property/media.property.ts`
+  - [ ] 12.3 Implement delete confirmation UI
+    - Add delete button to media cards (visible only for uploader); clicking opens a confirmation dialog; on confirm, call `DELETE /api/media/:id` and remove item from UI state
+    - _Requirements: 6.1, 6.3_
+
+- [ ] 13. Unauthenticated route protection
+  - [ ] 13.1 Verify Next.js middleware covers all protected routes
+    - Confirm `src/middleware.ts` (task 4.2) matcher config covers all routes under `/api/feed`, `/api/media`, `/api/albums`, `/api/upload`, `/api/auth/invite`
+    - Remove any redundant per-route `requireAuth` guards that are now handled by middleware
+    - _Requirements: 1.1, 12.4_
+  - [ ] 13.2 Write property test for unauthenticated redirect
+    - **Property 1: Unauthenticated requests to protected routes are redirected**
+    - **Validates: Requirements 1.1**
+    - File: `src/__tests__/property/auth.property.ts`
+
+- [ ] 14. Responsive layout
+  - [ ] 14.1 Implement `<MediaGrid>` component with responsive CSS grid
+    - Create `src/components/MediaGrid.tsx` using CSS Grid: 1 column < 768px, 2 columns 768–1279px, 3+ columns ≥ 1280px
+    - Use Tailwind or CSS modules with `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
+    - Use `next/image` for all thumbnail rendering (automatic optimization, lazy loading, responsive sizes)
+    - _Requirements: 8.1, 8.2, 8.3, 8.4_
+  - [ ] 14.2 Implement global layout and navigation
+    - Create `app/layout.tsx` with responsive nav bar (hamburger on mobile, horizontal on desktop)
+    - Links: Feed, Albums, Invite; sign-out button
+    - _Requirements: 8.1_
+
+- [ ] 15. Upload UI
+  - [ ] 15.1 Implement upload form component (`src/components/UploadForm.tsx`)
+    - File picker accepting JPEG, PNG, GIF, WebP, MP4, MOV, AVI; client-side validation before presign request; XHR upload to presigned URL with progress percentage display; call confirm endpoint on completion
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+  - [ ] 15.2 Integrate upload form into feed and album pages
+    - Add "Upload" button that opens `<UploadForm>` as a modal; on success, prepend new media item to the current list
+    - _Requirements: 2.5_
+
+- [ ] 16. Sign-in and registration UI
+  - [ ] 16.1 Implement sign-in page (`app/signin/page.tsx`)
+    - Form with email and password fields; POST to `/api/auth/signin`; display error message on 401; redirect to feed on success
+    - _Requirements: 1.2, 1.3_
+  - [ ] 16.2 Implement registration page (`app/register/[token]/page.tsx`)
+    - Validate token on page load (GET invitation record); show form if valid; POST to `/api/auth/register`; display 410 error for expired/used tokens
+    - _Requirements: 7.2, 7.3, 7.4, 7.5_
+
+- [ ] 17. Playwright E2E test suite
+  - [ ] 17.1 Set up Playwright config and test infrastructure
+    - Create `playwright.config.ts` with `baseURL: 'http://localhost:3000'`, `screenshot: 'only-on-failure'`, `trace: 'on-first-retry'`, `reporter: [['html']]`, and a `webServer` entry that starts the Next.js dev server
+    - Set `globalSetup` to `./scripts/seed-test-users.ts`
+    - _Requirements: 11.1, 11.9, 11.10, 11.13_
+  - [ ] 17.2 Implement test user seed script and auth state setup
+    - Create `scripts/seed-test-users.ts` that connects to the local PostgreSQL instance and inserts known `Test_User` accounts (one per E2E test file for isolation) before the suite runs
+    - Save authenticated browser state to `e2e/.auth/user.json` using Playwright's `browser.newContext()` + `storageState` so tests can reuse auth without re-logging in
+    - _Requirements: 11.1, 11.12, 11.14_
+  - [ ] 17.3 Create Docker Compose files for local dev and E2E testing
+    - Create `docker-compose.yml` with services: `postgres` (PostgreSQL 15 with health check), `swift` (OpenStack Swift with health check), and optional `thumbnail-worker`
+    - Create `docker-compose.test.yml` with isolated `postgres-test` and `swift-test` services on different ports for E2E test isolation
+    - _Requirements: 10.9, 10.10, 11.15_
+  - [ ] 17.4 Implement Page Object Model classes
+    - Create `e2e/pages/SignInPage.ts`, `FeedPage.ts`, `AlbumsPage.ts`, `UploadModal.ts`, `Lightbox.ts`, `InvitePage.ts`
+    - Each class encapsulates selectors and interactions for its page/component
+    - _Requirements: 11.11_
+  - [ ] 17.5 Write E2E test for authentication workflow
+    - Create `e2e/auth.e2e.ts`; use `test.use({ storageState })` for auth reuse within file; use `SignInPage` POM
+    - **Property 27: E2E authentication workflow completes successfully**
+    - Verify sign-in with valid credentials redirects to Feed; sign-out redirects to sign-in page; unauthenticated navigation to a protected route redirects to sign-in page
+    - Clean up test data in `afterAll`
+    - **Validates: Requirements 11.2**
+  - [ ] 17.6 Write E2E test for media upload workflow
+    - Create `e2e/upload.e2e.ts`; use `test.use({ storageState })`; use `UploadModal` POM
+    - **Property 28: E2E upload workflow surfaces media in the feed**
+    - Verify file selection, upload progress display, and uploaded item appearing in Feed
+    - Clean up uploaded media in `afterAll`
+    - **Validates: Requirements 11.3**
+  - [ ] 17.7 Write E2E test for family feed workflow
+    - Create `e2e/feed.e2e.ts`; use `test.use({ storageState })`; use `FeedPage` POM
+    - **Property 29: E2E feed workflow supports browsing, pagination, and media opening**
+    - Verify media items show thumbnails/uploader names/dates; scroll-to-bottom loads next page without full reload; clicking a media item opens lightbox or video player
+    - **Validates: Requirements 11.4**
+  - [ ] 17.8 Write E2E test for album management workflow
+    - Create `e2e/albums.e2e.ts`; use `test.use({ storageState })`; use `AlbumsPage` POM
+    - **Property 30: E2E album management workflow covers full CRUD lifecycle**
+    - Verify create album appears in list; add media appears in album view in reverse chron order; delete album removes it from list
+    - Clean up created albums in `afterAll`
+    - **Validates: Requirements 11.5**
+  - [ ] 17.9 Write E2E test for media viewing workflow
+    - Create `e2e/media-viewing.e2e.ts`; use `test.use({ storageState })`; use `Lightbox` POM
+    - **Property 31: E2E media viewing workflow supports lightbox navigation and video playback**
+    - Verify photo opens in lightbox overlay; prev/next controls navigate between items; video opens with interactive play/pause controls
+    - **Validates: Requirements 11.6**
+  - [ ] 17.10 Write E2E test for media deletion workflow
+    - Create `e2e/deletion.e2e.ts`; use `test.use({ storageState })`; use `FeedPage` POM
+    - **Property 32: E2E deletion workflow removes media from the feed**
+    - Verify deletion confirmation prompt; confirmed deletion removes item from Feed
+    - **Validates: Requirements 11.7**
+  - [ ] 17.11 Write E2E test for invitation workflow
+    - Create `e2e/invitations.e2e.ts`; use `test.use({ storageState })`; use `InvitePage` POM
+    - **Property 33: E2E invitation workflow allows a guest to register**
+    - Verify authenticated user generates invite link; guest follows link and sees registration form; valid submission creates account and signs in
+    - Clean up created user in `afterAll`
+    - **Validates: Requirements 11.8**
+
+- [ ] 18. Final checkpoint — Ensure all tests pass
+  - Run `vitest --run` and confirm all unit and property tests pass.
+  - Run `npx playwright test` and confirm all E2E tests pass.
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Notes
+
+- Tasks marked with `*` are optional and can be skipped for a faster MVP
+- Each task references specific requirements for traceability
+- Property tests use `fast-check` with `numRuns: 100` minimum and are tagged with `// Feature: nestpic-app, Property N: ...`
+- Unit and property tests run against `pg-mem` (in-memory PostgreSQL) and a mock ObjectStore — no real AWS or OpenStack credentials needed
+- The Lambda handler (task 7.4) and local worker (task 7.3) share the same `processMedia` core logic
+- All server-only modules (`db.ts`, `objectStore/`, `secrets.ts`, `auth/session.ts`) are marked with `import 'server-only'` to prevent accidental client-side bundling
+- bcrypt cost factor of 12 is used throughout; this is enforced in task 4.7 and 4.12
+- Constant-time token comparison (e.g. `crypto.timingSafeEqual`) is used in task 4.12 for invitation token validation
+- AWS Secrets Manager integration (task 3.2) is only active in production; local dev reads from `.env.local`
+- Docker Compose files (task 17.3) are the canonical way to start local dependencies; `docker compose up` starts everything needed for `npm run dev`
