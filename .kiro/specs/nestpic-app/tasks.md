@@ -16,12 +16,12 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
   - Add `package.json` scripts: `dev`, `db:migrate`, `db:seed`, `test` (`vitest --run`), `test:e2e` (`playwright test`)
   - _Requirements: 10.7, 10.8, 10.11, 10.12, 12.5_
 
-- [ ] 2. Database schema and migrations
-  - [ ] 2.1 Create SQL migration files for all tables
+- [x] 2. Database schema and migrations
+  - [x] 2.1 Create SQL migration files for all tables
     - Write `migrations/001_initial.sql` with `users`, `sessions`, `invitations`, `media`, `albums`, `album_media`, `rate_limit_buckets` tables matching the data models in the design
     - Add indexes on `media.uploader_id`, `media.uploaded_at`, `album_media.album_id`, `sessions.user_id`, `sessions.expires_at`
     - _Requirements: 9.2_
-  - [ ] 2.2 Create `src/lib/db.ts` database client
+  - [x] 2.2 Create `src/lib/db.ts` database client
     - Export a `pg.Pool` instance configured from `DATABASE_URL`
     - Export a typed `query` helper
     - Mark file with `import 'server-only'`
