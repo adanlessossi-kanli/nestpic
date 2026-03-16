@@ -293,11 +293,11 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - Add "Upload" button that opens `<UploadForm>` as a modal; on success, prepend new media item to the current list
     - _Requirements: 2.5_
 
-- [ ] 16. Sign-in and registration UI
-  - [ ] 16.1 Implement sign-in page (`app/signin/page.tsx`)
+- [x] 16. Sign-in and registration UI
+  - [x] 16.1 Implement sign-in page (`app/signin/page.tsx`)
     - Form with email and password fields; POST to `/api/auth/signin`; display error message on 401; redirect to feed on success
     - _Requirements: 1.2, 1.3_
-  - [ ] 16.2 Implement registration page (`app/register/[token]/page.tsx`)
+  - [x] 16.2 Implement registration page (`app/register/[token]/page.tsx`)
     - Validate token on page load (GET invitation record); show form if valid; POST to `/api/auth/register`; display 410 error for expired/used tokens
     - _Requirements: 7.2, 7.3, 7.4, 7.5_
 
