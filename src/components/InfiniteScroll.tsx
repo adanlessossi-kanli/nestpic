@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import MediaGrid from '@/components/MediaGrid'
 import Lightbox from '@/components/Lightbox'
 import VideoPlayer from '@/components/VideoPlayer'
+import UploadForm from '@/components/UploadForm'
 import type { FeedItem } from '@/app/api/feed/route'
 
 interface InfiniteScrollProps {
@@ -28,6 +29,7 @@ export default function InfiniteScroll({ initialItems, initialCursor, currentUse
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<FeedItem | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [showUpload, setShowUpload] = useState(false)
 
   const loadMore = useCallback(async () => {
     if (!cursor || loading) return
@@ -110,6 +112,14 @@ export default function InfiniteScroll({ initialItems, initialCursor, currentUse
 
   return (
     <div>
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setShowUpload(true)}
+          className="px-4 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+        >
+          Upload
+        </button>
+      </div>
       <MediaGrid items={items} onItemClick={openItem} currentUserId={currentUserId} onDelete={handleDeleteRequest} />
       <div ref={sentinelRef} className="h-4" />
       {loading && (
@@ -157,6 +167,17 @@ export default function InfiniteScroll({ initialItems, initialCursor, currentUse
             </div>
           </div>
         </div>
+      )}
+
+      {/* Upload modal */}
+      {showUpload && (
+        <UploadForm
+          onClose={() => setShowUpload(false)}
+          onSuccess={(item) => {
+            setItems((prev) => [item, ...prev])
+            setShowUpload(false)
+          }}
+        />
       )}
     </div>
   )

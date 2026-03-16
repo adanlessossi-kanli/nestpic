@@ -285,11 +285,11 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - Links: Feed, Albums, Invite; sign-out button
     - _Requirements: 8.1_
 
-- [ ] 15. Upload UI
-  - [ ] 15.1 Implement upload form component (`src/components/UploadForm.tsx`)
+- [x] 15. Upload UI
+  - [x] 15.1 Implement upload form component (`src/components/UploadForm.tsx`)
     - File picker accepting JPEG, PNG, GIF, WebP, MP4, MOV, AVI; client-side validation before presign request; XHR upload to presigned URL with progress percentage display; call confirm endpoint on completion
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
-  - [ ] 15.2 Integrate upload form into feed and album pages
+  - [x] 15.2 Integrate upload form into feed and album pages
     - Add "Upload" button that opens `<UploadForm>` as a modal; on success, prepend new media item to the current list
     - _Requirements: 2.5_
 
