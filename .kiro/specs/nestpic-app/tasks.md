@@ -27,31 +27,31 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - Mark file with `import 'server-only'`
     - _Requirements: 9.2, 9.7, 12.6_
 
-- [ ] 3. Object store abstraction
-  - [ ] 3.1 Implement `ObjectStore` interface and startup validation
+- [x] 3. Object store abstraction
+  - [x] 3.1 Implement `ObjectStore` interface and startup validation
     - Create `src/lib/objectStore/types.ts` with the `ObjectStore` interface (`generatePresignedPutUrl` with `contentLength` param, `generateSignedGetUrl`, `deleteObject`, `headObject`)
     - Create `src/lib/objectStore/index.ts` with a factory function that reads env vars (or fetches from Secrets Manager in production), throws a descriptive error if any are missing, and returns the correct adapter based on `NODE_ENV`
     - Mark file with `import 'server-only'`
     - _Requirements: 10.4, 10.7, 10.8, 12.6_
-  - [ ] 3.2 Implement AWS Secrets Manager integration
+  - [x] 3.2 Implement AWS Secrets Manager integration
     - Create `src/lib/secrets.ts` that fetches the production secrets JSON from Secrets Manager at startup (using `@aws-sdk/client-secrets-manager`) and caches the result
     - Used by the ObjectStore factory and db client in production; falls back to env vars in development
     - Mark file with `import 'server-only'`
     - _Requirements: 9.13_
-  - [ ] 3.3 Write property test for ObjectStore env var validation
+  - [x] 3.3 Write property test for ObjectStore env var validation
     - **Property 25: Object store is configured from environment variables**
     - **Property 26: Missing environment variables prevent startup**
     - **Validates: Requirements 10.7, 10.8**
     - File: `src/__tests__/property/config.property.ts`
-  - [ ] 3.4 Implement S3 adapter
+  - [x] 3.4 Implement S3 adapter
     - Create `src/lib/objectStore/s3Adapter.ts` implementing `ObjectStore` using `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner`
     - Presigned PUT URLs use `PutObjectCommand` with `ContentType` and `ContentLengthRange` conditions; signed GET URLs use CloudFront signed URLs scoped to the specific key
     - _Requirements: 2.4, 2.6, 2.12, 9.1, 9.5, 9.6_
-  - [ ] 3.5 Implement OpenStack Swift adapter
+  - [x] 3.5 Implement OpenStack Swift adapter
     - Create `src/lib/objectStore/swiftAdapter.ts` implementing `ObjectStore` using the S3-compatible API of OpenStack Swift
     - Reuse the same `@aws-sdk/client-s3` client pointed at the Swift endpoint
     - _Requirements: 10.1, 10.2, 10.6_
-  - [ ] 3.6 Write unit tests for ObjectStore adapters
+  - [x] 3.6 Write unit tests for ObjectStore adapters
     - Test presigned URL generation (including Content-Type/Content-Length constraints), signed URL scoping, delete, and headObject for both adapters using mocks
     - File: `src/__tests__/unit/objectStore.test.ts`
     - _Requirements: 10.4_
