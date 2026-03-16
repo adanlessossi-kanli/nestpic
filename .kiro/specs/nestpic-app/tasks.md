@@ -6,7 +6,7 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
 
 ## Tasks
 
-- [ ] 1. Project scaffolding and environment setup
+- [x] 1. Project scaffolding and environment setup
   - Bootstrap Next.js 14 App Router project with TypeScript (`strict: true` in `tsconfig.json`)
   - Install dependencies: `pg`, `bcrypt`, `iron-session`, `sharp`, `fluent-ffmpeg`, `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@aws-sdk/client-secrets-manager`, `fast-check`, `vitest`, `pg-mem`, `@playwright/test`, `zod`, `server-only`
   - Create `.env.example` (committed to repo) with all required env var names and placeholder values: `NODE_ENV`, `OBJECT_STORE_ENDPOINT`, `OBJECT_STORE_ACCESS_KEY`, `OBJECT_STORE_SECRET_KEY`, `OBJECT_STORE_BUCKET`, `DATABASE_URL`, `SESSION_SECRET`, `CDN_BASE_URL`, `CDN_KEY_PAIR_ID`, `CDN_PRIVATE_KEY`, `SECRETS_MANAGER_SECRET_ARN`
