@@ -177,25 +177,25 @@ Incremental implementation of the Nestpic family photo/video sharing platform us
     - Configure the Lambda with an SQS Dead Letter Queue in the infrastructure definition so failed events are captured for inspection and retry
     - _Requirements: 2.8, 2.9, 9.14_
 
-- [ ] 8. Family feed API and UI
-  - [ ] 8.1 Implement `GET /api/feed` route
+- [x] 8. Family feed API and UI
+  - [x] 8.1 Implement `GET /api/feed` route
     - Require auth; query `media` where `status = active`, ordered by `uploaded_at DESC`, paginated at 30 items; join `users` for `uploader_name`; generate CloudFront signed URLs (3600s) for each `thumbnail_key`
     - Accept `?cursor` (last `uploaded_at` ISO string) for cursor-based pagination
     - Validate query params with Zod schema
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 12.3_
-  - [ ] 8.2 Write property tests for feed ordering and pagination
+  - [x] 8.2 Write property tests for feed ordering and pagination
     - **Property 9: Media listings are in reverse chronological order**
     - **Property 10: Feed and album media items include required fields**
     - **Property 11: Signed CDN URLs expire within 1 hour**
     - **Property 12: Feed pagination returns at most 30 items per page**
     - **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
     - File: `src/__tests__/property/feed.property.ts`
-  - [ ] 8.3 Implement feed page UI (`app/feed/page.tsx`)
+  - [x] 8.3 Implement feed page UI (`app/feed/page.tsx`)
     - Server component fetches first page; renders `<MediaGrid>` with thumbnail cards using `next/image` for automatic optimization and lazy loading; shows thumbnail, uploader name, upload date
     - Wrap with React Suspense boundary and error boundary
     - Each card links to media detail; loading skeleton shown while fetching
     - _Requirements: 3.2, 3.6_
-  - [ ] 8.4 Implement infinite scroll client component
+  - [x] 8.4 Implement infinite scroll client component
     - Create `src/components/InfiniteScroll.tsx` using `IntersectionObserver` to detect bottom of list and fetch next page from `/api/feed?cursor=...`
     - Append new items without full page reload
     - _Requirements: 3.5_
