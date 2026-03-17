@@ -6,4 +6,6 @@ export interface FeedItem {
   uploadedAt: string;
   contentType: string;
   s3Key: string;
+  label: string | null;
+  category: string | null;
 }

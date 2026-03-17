@@ -30,11 +30,21 @@ test.describe('Media upload workflow', () => {
     // Select test image
     await modal.selectTestImage()
 
-    // Intercept confirm response to capture media ID for cleanup
+    // Fill in label and create a new category
+    const testLabel = 'E2E test label'
+    const testCategory = `e2e-category-${Date.now()}`
+    await modal.fillLabel(testLabel)
+    await modal.createNewCategory(testCategory)
+
+    // Capture confirm response to assert label and category are persisted
+    let confirmedMedia: { label?: string | null; category?: string | null; id?: string } = {}
     page.on('response', async (response) => {
       if (response.url().includes('/api/upload/confirm') && response.status() === 200) {
         const json = await response.json().catch(() => null)
-        if (json?.id) uploadedMediaIds.push(json.id)
+        if (json?.media) {
+          confirmedMedia = json.media
+          if (json.media.id) uploadedMediaIds.push(json.media.id)
+        }
       }
     })
 
@@ -46,6 +56,10 @@ test.describe('Media upload workflow', () => {
 
     // Modal closes on success
     await modal.waitForCompletion()
+
+    // Assert label and category are returned in the confirm response
+    expect(confirmedMedia.label).toBe(testLabel)
+    expect(confirmedMedia.category).toBe(testCategory)
 
     // New item should appear in feed (prepended)
     await expect(async () => {
