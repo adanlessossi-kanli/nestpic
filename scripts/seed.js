@@ -1,7 +1,10 @@
 /**
  * Development seed script.
  * Creates a default admin user if no users exist.
- * Password: "password123" (bcrypt, cost 12)
+ * Credentials are read from environment variables:
+ *   SEED_ADMIN_NAME     (default: "Admin")
+ *   SEED_ADMIN_EMAIL    (default: "admin@example.com")
+ *   SEED_ADMIN_PASSWORD (default: "password123")
  */
 
 const fs = require('fs');
@@ -44,13 +47,17 @@ async function run() {
     return;
   }
 
-  const hash = await bcrypt.hash('password123', 12);
+  const adminName     = process.env.SEED_ADMIN_NAME     ?? 'Admin';
+  const adminEmail    = process.env.SEED_ADMIN_EMAIL    ?? 'admin@example.com';
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'password123';
+
+  const hash = await bcrypt.hash(adminPassword, 12);
   await pool.query(
     `INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3)`,
-    ['Admin', 'admin@example.com', hash]
+    [adminName, adminEmail, hash]
   );
 
-  console.log('Seeded user: admin@example.com / password123');
+  console.log(`Seeded user: ${adminEmail}`);
   await pool.end();
 }
 

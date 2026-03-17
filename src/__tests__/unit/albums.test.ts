@@ -228,7 +228,7 @@ describe('GET /api/albums/:id', () => {
 
   it('generates signed URLs for thumbnail_key', async () => {
     makeAuthSession();
-    const thumbKey = 'thumbs/photo.jpg';
+    const thumbKey = 'thumbnails/photo.jpg';
     mockQuery.mockResolvedValueOnce({
       rows: [{
         id: crypto.randomUUID(),

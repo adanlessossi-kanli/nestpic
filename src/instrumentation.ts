@@ -14,5 +14,8 @@ export async function register() {
     } catch {
       // Non-fatal — DB may not be available yet on first boot
     }
+
+    const { startLocalWorker } = await import('./lib/thumbnail/localWorker')
+    startLocalWorker()
   }
 }

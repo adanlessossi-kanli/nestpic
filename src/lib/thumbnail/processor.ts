@@ -39,35 +39,46 @@ export async function processMedia(
 
 async function processImage(s3Key: string): Promise<Buffer> {
   const objectStore = await getObjectStore();
-  const { contentLength } = await objectStore.headObject(s3Key);
-  const signedUrl = await objectStore.generateSignedGetUrl(s3Key, PRESIGN_EXPIRES_IN);
 
+  // In dev, read directly from the in-process store to avoid HTTP round-trips
+  if ('getObjectBuffer' in objectStore) {
+    const inputBuffer = (objectStore as { getObjectBuffer(k: string): Buffer }).getObjectBuffer(s3Key);
+    return sharp(inputBuffer)
+      .resize(THUMBNAIL_MAX_PX, THUMBNAIL_MAX_PX, { fit: 'inside', withoutEnlargement: true })
+      .jpeg()
+      .toBuffer();
+  }
+
+  const signedUrl = await objectStore.generateSignedGetUrl(s3Key, PRESIGN_EXPIRES_IN);
   const response = await fetch(signedUrl);
   if (!response.ok) {
     throw new Error(`Failed to fetch image from object store: ${response.status}`);
   }
-
-  const arrayBuffer = await response.arrayBuffer();
-  const inputBuffer = Buffer.from(arrayBuffer);
-
+  const inputBuffer = Buffer.from(await response.arrayBuffer());
   return sharp(inputBuffer)
-    .resize(THUMBNAIL_MAX_PX, THUMBNAIL_MAX_PX, {
-      fit: 'inside',
-      withoutEnlargement: true,
-    })
+    .resize(THUMBNAIL_MAX_PX, THUMBNAIL_MAX_PX, { fit: 'inside', withoutEnlargement: true })
     .jpeg()
     .toBuffer();
 }
 
 async function processVideo(s3Key: string): Promise<Buffer> {
   const objectStore = await getObjectStore();
-  const signedUrl = await objectStore.generateSignedGetUrl(s3Key, PRESIGN_EXPIRES_IN);
-
   const tmpDir = os.tmpdir();
-  const frameFile = path.join(tmpDir, `nestpic-frame-${Date.now()}.jpg`);
+  const frameFile = path.join(tmpDir, `nestpic-frame-${crypto.randomUUID()}.jpg`);
+  let inputFile: string | null = null;
 
   try {
-    await extractFirstFrame(signedUrl, frameFile);
+    if ('getObjectBuffer' in objectStore) {
+      // Dev fast path: read directly from in-process store, bypass HTTP layer
+      const videoBuffer = (objectStore as { getObjectBuffer(k: string): Buffer }).getObjectBuffer(s3Key);
+      inputFile = path.join(tmpDir, `nestpic-input-${crypto.randomUUID()}.tmp`);
+      fs.writeFileSync(inputFile, videoBuffer);
+      await extractFirstFrame(inputFile, frameFile);
+    } else {
+      // Production path: use signed URL
+      const signedUrl = await objectStore.generateSignedGetUrl(s3Key, PRESIGN_EXPIRES_IN);
+      await extractFirstFrame(signedUrl, frameFile);
+    }
 
     return await sharp(frameFile)
       .resize(THUMBNAIL_MAX_PX, THUMBNAIL_MAX_PX, {
@@ -77,11 +88,10 @@ async function processVideo(s3Key: string): Promise<Buffer> {
       .jpeg()
       .toBuffer();
   } finally {
-    try {
-      fs.unlinkSync(frameFile);
-    } catch {
-      // best-effort cleanup
+    if (inputFile) {
+      try { fs.unlinkSync(inputFile); } catch { /* best-effort */ }
     }
+    try { fs.unlinkSync(frameFile); } catch { /* best-effort */ }
   }
 }
 
@@ -98,6 +108,14 @@ function extractFirstFrame(inputUrl: string, outputPath: string): Promise<void> 
 
 async function uploadThumbnail(thumbnailKey: string, jpegBuffer: Buffer): Promise<void> {
   const objectStore = await getObjectStore();
+
+  // In dev, write directly to the in-process store
+  if ('putObjectBuffer' in objectStore) {
+    (objectStore as { putObjectBuffer(k: string, d: Buffer, ct: string): void })
+      .putObjectBuffer(thumbnailKey, jpegBuffer, 'image/jpeg');
+    return;
+  }
+
   const putUrl = await objectStore.generatePresignedPutUrl(
     thumbnailKey,
     'image/jpeg',
@@ -111,10 +129,7 @@ async function uploadThumbnail(thumbnailKey: string, jpegBuffer: Buffer): Promis
       'Content-Type': 'image/jpeg',
       'Content-Length': String(jpegBuffer.byteLength),
     },
-    body: jpegBuffer.buffer.slice(
-      jpegBuffer.byteOffset,
-      jpegBuffer.byteOffset + jpegBuffer.byteLength
-    ) as ArrayBuffer,
+    body: jpegBuffer.buffer.slice(jpegBuffer.byteOffset, jpegBuffer.byteOffset + jpegBuffer.byteLength) as ArrayBuffer,
   });
 
   if (!response.ok) {

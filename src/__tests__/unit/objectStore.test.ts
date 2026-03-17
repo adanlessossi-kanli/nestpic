@@ -81,6 +81,8 @@ const S3_CONFIG = {
 describe('SwiftAdapter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset the in-process dev store between tests
+    global.__devStore = new Map();
   });
 
   it('creates an S3Client with forcePathStyle and the configured endpoint', () => {
@@ -127,44 +129,35 @@ describe('SwiftAdapter', () => {
   });
 
   describe('deleteObject', () => {
-    it('sends a DELETE request to the dev proxy', async () => {
+    it('removes the key from the in-process dev store', async () => {
       const adapter = new SwiftAdapter(SWIFT_CONFIG);
-      global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
+      // Pre-populate the dev store
+      const store = (adapter as unknown as { putObjectBuffer: (k: string, d: Buffer, ct: string) => void });
+      store.putObjectBuffer('uploads/file.jpg', Buffer.from('data'), 'image/jpeg');
 
       await adapter.deleteObject('uploads/file.jpg');
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/dev-upload/uploads/file.jpg'),
-        { method: 'DELETE' }
-      );
+      // After deletion, headObject should throw NoSuchKey
+      await expect(adapter.headObject('uploads/file.jpg')).rejects.toMatchObject({ code: 'NoSuchKey' });
     });
   });
 
   describe('headObject', () => {
-    it('returns contentLength and contentType from the HeadObject response', async () => {
+    it('returns contentLength and contentType from the in-process dev store', async () => {
       const adapter = new SwiftAdapter(SWIFT_CONFIG);
-      // Mock fetch to return a successful HEAD response
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        headers: new Headers({ 'content-length': '2048', 'content-type': 'image/png' }),
-      });
+      const data = Buffer.from('fake-image-data');
+      const store = (adapter as unknown as { putObjectBuffer: (k: string, d: Buffer, ct: string) => void });
+      store.putObjectBuffer('uploads/photo.png', data, 'image/png');
 
       const result = await adapter.headObject('uploads/photo.png');
 
-      expect(result).toEqual({ contentLength: 2048, contentType: 'image/png' });
+      expect(result).toEqual({ contentLength: data.length, contentType: 'image/png' });
     });
 
-    it('defaults to 0 and application/octet-stream when response fields are absent', async () => {
+    it('throws NoSuchKey when the object does not exist', async () => {
       const adapter = new SwiftAdapter(SWIFT_CONFIG);
-      // Mock fetch to return a successful HEAD response with no content headers
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        headers: new Headers({}),
-      });
 
-      const result = await adapter.headObject('uploads/unknown');
-
-      expect(result).toEqual({ contentLength: 0, contentType: 'application/octet-stream' });
+      await expect(adapter.headObject('uploads/unknown')).rejects.toMatchObject({ code: 'NoSuchKey' });
     });
   });
 });

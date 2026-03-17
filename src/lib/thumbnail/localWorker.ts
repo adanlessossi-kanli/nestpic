@@ -12,8 +12,15 @@ async function pollPendingThumbnails(): Promise<void> {
   for (const row of result.rows) {
     try {
       await processMedia(row.id, row.s3_key, row.content_type);
-    } catch (err) {
-      console.error(`[localWorker] Failed to process media ${row.id}:`, err);
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code === 'NoSuchKey') {
+        // Original no longer in store (e.g. lost on restart) — delete the orphaned record
+        await query('DELETE FROM media WHERE id = $1', [row.id]);
+        console.warn(`[localWorker] Original not found for media ${row.id}, deleted orphaned record`);
+      } else {
+        console.error(`[localWorker] Failed to process media ${row.id}:`, err);
+      }
     }
   }
 }

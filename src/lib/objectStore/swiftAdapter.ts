@@ -1,16 +1,15 @@
 import {
   S3Client,
   DeleteObjectCommand,
-  HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import type { ObjectStore } from './types';
 import type { ObjectStoreConfig } from './index';
+import { getDevStore } from '@/app/api/dev-upload/store';
 
 /**
  * OpenStack Swift adapter for local development.
- * Uses a local dev-upload proxy endpoint for presigned URLs to avoid
- * CORS and S3-compatibility issues with the Swift container.
- * Uses the S3 client for delete and headObject operations.
+ * Reads/writes directly from the in-process dev store to avoid HTTP round-trips
+ * and CORS/auth issues with the Swift container.
  */
 export class SwiftAdapter implements ObjectStore {
   private client: S3Client;
@@ -38,37 +37,36 @@ export class SwiftAdapter implements ObjectStore {
     _contentLength: number,
     _expiresIn: number
   ): Promise<string> {
-    // Use a local proxy endpoint to avoid CORS/auth issues with Swift container
     return `${this.baseUrl}/api/dev-upload/${key}`;
   }
 
   async generateSignedGetUrl(key: string, _expiresIn: number): Promise<string> {
-    // Use a local proxy endpoint for GET URLs
     return `${this.baseUrl}/api/dev-upload/${key}`;
   }
 
   async deleteObject(key: string): Promise<void> {
-    // In development, delete from the local proxy store
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000';
-    await fetch(`${baseUrl}/api/dev-upload/${key}`, { method: 'DELETE' });
+    getDevStore().delete(key);
   }
 
   async headObject(key: string): Promise<{ contentLength: number; contentType: string }> {
-    // Check the local proxy store first
-    const res = await fetch(`${this.baseUrl}/api/dev-upload/${key}`, { method: 'HEAD' });
-    if (res.ok) {
-      return {
-        contentLength: parseInt(res.headers.get('content-length') ?? '0', 10),
-        contentType: res.headers.get('content-type') ?? 'application/octet-stream',
-      };
+    const entry = getDevStore().get(key);
+    if (!entry) {
+      throw Object.assign(new Error(`Object not found: ${key}`), { code: 'NoSuchKey' });
     }
-    // Fall back to S3 client
-    const response = await this.client.send(
-      new HeadObjectCommand({ Bucket: this.bucket, Key: key })
-    );
-    return {
-      contentLength: response.ContentLength ?? 0,
-      contentType: response.ContentType ?? 'application/octet-stream',
-    };
+    return { contentLength: entry.data.length, contentType: entry.contentType };
+  }
+
+  // Direct in-process read used by the thumbnail processor
+  getObjectBuffer(key: string): Buffer {
+    const entry = getDevStore().get(key);
+    if (!entry) {
+      throw Object.assign(new Error(`Object not found: ${key}`), { code: 'NoSuchKey' });
+    }
+    return entry.data;
+  }
+
+  // Direct in-process write used by the thumbnail processor
+  putObjectBuffer(key: string, data: Buffer, contentType: string): void {
+    getDevStore().set(key, { data, contentType });
   }
 }
