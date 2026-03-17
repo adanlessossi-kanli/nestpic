@@ -6,8 +6,6 @@ import { feedQuerySchema } from '@/lib/schemas/feed';
 import { ok, err } from '@/lib/api/response';
 import type { FeedItem } from '@/lib/types/media';
 
-export type { FeedItem };
-
 const PAGE_SIZE = 30;
 const SIGNED_URL_EXPIRY = 3600;
 
@@ -19,16 +17,8 @@ interface MediaRow {
   uploaded_at: Date;
   uploader_name: string;
   uploader_id: string;
-}
-
-export interface FeedItem {
-  id: string;
-  thumbnailUrl: string | null;
-  uploaderName: string;
-  uploaderId: string;
-  uploadedAt: string;
-  contentType: string;
-  s3Key: string;
+  label: string | null;
+  category_name: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -51,9 +41,11 @@ export async function GET(request: NextRequest) {
   if (cursor) {
     sql = `
       SELECT m.id, m.thumbnail_key, m.content_type, m.s3_key, m.uploaded_at,
-             u.name AS uploader_name, m.uploader_id
+             u.name AS uploader_name, m.uploader_id,
+             m.label, c.name AS category_name
       FROM media m
       JOIN users u ON u.id = m.uploader_id
+      LEFT JOIN categories c ON c.id = m.category_id
       WHERE m.status = 'active'
         AND m.uploaded_at < $1
       ORDER BY m.uploaded_at DESC
@@ -63,9 +55,11 @@ export async function GET(request: NextRequest) {
   } else {
     sql = `
       SELECT m.id, m.thumbnail_key, m.content_type, m.s3_key, m.uploaded_at,
-             u.name AS uploader_name, m.uploader_id
+             u.name AS uploader_name, m.uploader_id,
+             m.label, c.name AS category_name
       FROM media m
       JOIN users u ON u.id = m.uploader_id
+      LEFT JOIN categories c ON c.id = m.category_id
       WHERE m.status = 'active'
       ORDER BY m.uploaded_at DESC
       LIMIT $1
@@ -98,6 +92,8 @@ export async function GET(request: NextRequest) {
           : String(row.uploaded_at),
         contentType: row.content_type,
         s3Key: row.s3_key,
+        label: row.label ?? null,
+        category: row.category_name ?? null,
       };
     })
   );

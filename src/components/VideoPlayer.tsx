@@ -79,6 +79,7 @@ export default function VideoPlayer({ item, mediaUrl, items, onClose, onNavigate
           autoPlay
           className="max-w-[90vw] max-h-[85vh] rounded"
           aria-label={`Video by ${item.uploaderName}`}
+          onContextMenu={(e) => e.preventDefault()}
         />
       </div>
 

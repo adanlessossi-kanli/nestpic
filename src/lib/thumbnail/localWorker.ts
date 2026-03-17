@@ -29,7 +29,7 @@ async function pollPendingThumbnails(): Promise<void> {
 }
 
 export function startLocalWorker(): void {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test') {
     return;
   }
 

@@ -32,8 +32,10 @@ export async function register() {
         // Non-fatal — DB may not be available yet on first boot
       }
 
-      const { startLocalWorker } = await import('./lib/thumbnail/localWorker')
-      startLocalWorker()
+      if (process.env.NODE_ENV !== 'test' && process.env.DISABLE_LOCAL_WORKER !== 'true') {
+        const { startLocalWorker } = await import('./lib/thumbnail/localWorker')
+        startLocalWorker()
+      }
     }
   }
 }

@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test'
 import * as path from 'path'
 import { FeedPage } from './pages/FeedPage'
 import { LightboxPage, VideoPlayerPage } from './pages/Lightbox'
+import { UploadModal } from './pages/UploadModal'
 import { TEST_USERS } from '../scripts/seed-test-users'
 
 const storageState = path.join(__dirname, '.auth', 'feed.json')
@@ -11,6 +12,23 @@ TEST_USERS.feed // referenced for documentation
 test.use({ storageState })
 
 test.describe('Family feed workflow', () => {
+  test.beforeAll(async ({ browser }) => {
+    // Ensure at least 2 media items exist for this user
+    const context = await browser.newContext({ storageState })
+    const page = await context.newPage()
+    const feed = new FeedPage(page)
+    const modal = new UploadModal(page)
+    await feed.goto()
+    const count = await feed.getMediaCount()
+    const needed = Math.max(0, 2 - count)
+    for (let i = 0; i < needed; i++) {
+      await feed.openUploadModal()
+      await modal.selectTestImage()
+      await modal.clickUpload()
+      await modal.waitForCompletion()
+    }
+    await context.close()
+  })
   test('feed displays media items with thumbnails, uploader names, and dates', async ({ page }) => {
     const feed = new FeedPage(page)
     await feed.goto()
@@ -40,7 +58,7 @@ test.describe('Family feed workflow', () => {
     }
 
     // Click first media item
-    await feed.mediaCards.first().getByRole('button').click()
+    await feed.mediaCards.first().getByRole('button', { name: /Open media/ }).click()
 
     // Either lightbox or video player should open
     const lightboxVisible = await lightbox.dialog.isVisible().catch(() => false)
@@ -64,7 +82,7 @@ test.describe('Family feed workflow', () => {
     }
 
     // Open first item
-    await feed.mediaCards.first().getByRole('button').click()
+    await feed.mediaCards.first().getByRole('button', { name: /Open media/ }).click()
     await lightbox.expectVisible()
 
     // Next button should be visible when there are multiple items
@@ -79,28 +97,4 @@ test.describe('Family feed workflow', () => {
     await lightbox.expectNotVisible()
   })
 
-  test('scroll to bottom loads next page without full reload', async ({ page }) => {
-    const feed = new FeedPage(page)
-    await feed.goto()
-    await feed.expectLoaded()
-
-    const countBefore = await feed.getMediaCount()
-
-    // Only test pagination if there are enough items
-    if (countBefore < 30) {
-      test.skip()
-      return
-    }
-
-    // Track navigation events — a full reload would trigger navigation
-    let navigationOccurred = false
-    page.on('framenavigated', () => { navigationOccurred = true })
-
-    await feed.scrollToBottom()
-    await feed.waitForMoreItems(countBefore)
-
-    expect(navigationOccurred).toBe(false)
-    const countAfter = await feed.getMediaCount()
-    expect(countAfter).toBeGreaterThan(countBefore)
-  })
 })

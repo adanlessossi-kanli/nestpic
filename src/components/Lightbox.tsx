@@ -75,6 +75,8 @@ export default function Lightbox({ item, mediaUrl, items, onClose, onNavigate }:
             src={mediaUrl}
             alt={`Photo by ${item.uploaderName}`}
             className="max-w-full max-h-[90vh] object-contain"
+            onContextMenu={(e) => e.preventDefault()}
+            draggable={false}
           />
         ) : (
           <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />

@@ -57,20 +57,23 @@ test.describe('Media deletion workflow', () => {
 
   test('cancelling delete confirmation keeps item in feed', async ({ page }) => {
     const feed = new FeedPage(page)
+    const modal = new UploadModal(page)
 
     await feed.goto()
     await feed.expectLoaded()
 
-    const countBefore = await feed.getMediaCount()
-    if (countBefore === 0) {
-      test.skip()
-      return
-    }
-
+    // Ensure there's at least one owned item to delete
+    let countBefore = await feed.getMediaCount()
     const deleteButton = page.getByRole('button', { name: /Delete media/ }).first()
-    if (!(await deleteButton.isVisible())) {
-      test.skip()
-      return
+    const hasOwnedItem = await deleteButton.isVisible()
+    if (!hasOwnedItem) {
+      await feed.openUploadModal()
+      await modal.selectTestImage()
+      await modal.clickUpload()
+      await modal.waitForCompletion()
+      await page.reload()
+      await feed.expectLoaded()
+      countBefore = await feed.getMediaCount()
     }
 
     await deleteButton.click()

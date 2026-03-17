@@ -19,9 +19,9 @@ export async function POST(request: NextRequest) {
     return err('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid input', 400);
   }
 
-  const { mediaId } = parsed.data;
+  const { mediaId, category } = parsed.data;
 
-  // Look up pending media record
+  // Look up pending media record (include label)
   const result = await query<{
     id: string;
     s3_key: string;
@@ -30,8 +30,9 @@ export async function POST(request: NextRequest) {
     status: string;
     uploader_id: string;
     uploaded_at: string;
+    label: string | null;
   }>(
-    'SELECT id, s3_key, content_type, file_size, status, uploader_id, uploaded_at FROM media WHERE id = $1',
+    'SELECT id, s3_key, content_type, file_size, status, uploader_id, uploaded_at, label FROM media WHERE id = $1',
     [mediaId]
   );
 
@@ -49,10 +50,28 @@ export async function POST(request: NextRequest) {
   const objectStore = await getObjectStore();
   await objectStore.headObject(media.s3_key);
 
-  // Activate the media record
+  // Resolve category if provided
+  let categoryId: string | null = null;
+  let categoryName: string | null = null;
+
+  if (category) {
+    // Upsert category — insert if not exists, then select the id
+    await query(
+      `INSERT INTO categories (name, created_by) VALUES ($1, $2) ON CONFLICT (name, created_by) DO NOTHING`,
+      [category, session.userId]
+    );
+    const catResult = await query<{ id: string }>(
+      `SELECT id FROM categories WHERE name = $1 AND created_by = $2`,
+      [category, session.userId]
+    );
+    categoryId = catResult.rows[0]?.id ?? null;
+    categoryName = category;
+  }
+
+  // Activate the media record, linking category if resolved
   await query(
-    `UPDATE media SET status = 'active', uploaded_at = now() WHERE id = $1`,
-    [mediaId]
+    `UPDATE media SET status = 'active', uploaded_at = now(), category_id = $2 WHERE id = $1`,
+    [mediaId, categoryId]
   );
 
   return ok({
@@ -66,6 +85,8 @@ export async function POST(request: NextRequest) {
       uploadedAt: new Date().toISOString(),
       status: 'active',
       thumbnailUrl: null,
+      label: media.label ?? null,
+      category: categoryName,
     },
   });
 }

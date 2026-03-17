@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     return err('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid input', 400);
   }
 
-  const { filename, contentType, fileSize } = parsed.data;
+  const { filename, contentType, fileSize, label, category } = parsed.data;
 
   // Validate file type and size
   const validation = validateFile({ mimeType: contentType, size: fileSize });
@@ -45,10 +45,12 @@ export async function POST(request: NextRequest) {
   );
 
   // Create pending media record
+  // category is accepted but not resolved at presign time — only label is stored now
+  void category; // acknowledged, resolved at confirm time
   await query(
-    `INSERT INTO media (id, uploader_id, s3_key, content_type, file_size, status)
-     VALUES ($1, $2, $3, $4, $5, 'pending')`,
-    [mediaId, session.userId, s3Key, contentType, fileSize]
+    `INSERT INTO media (id, uploader_id, s3_key, content_type, file_size, status, label)
+     VALUES ($1, $2, $3, $4, $5, 'pending', $6)`,
+    [mediaId, session.userId, s3Key, contentType, fileSize, label ?? null]
   );
 
   return ok({ uploadUrl, mediaId });

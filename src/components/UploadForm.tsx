@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import type { FeedItem } from '@/lib/types/media'
 
 const ACCEPTED_MIME_TYPES = [
@@ -28,15 +28,14 @@ interface PresignResponse {
 }
 
 interface ConfirmResponse {
-  media: {
-    id: string;
-    thumbnailUrl: string | null;
-    uploaderName: string;
-    uploaderId: string;
-    uploadedAt: string;
-    contentType: string;
-    s3Key: string;
-  };
+  media: FeedItem
+}
+
+interface Category {
+  id: string
+  name: string
+  createdBy: string
+  createdAt: string
 }
 
 export default function UploadForm({ onClose, onSuccess, albumId }: UploadFormProps) {
@@ -45,6 +44,24 @@ export default function UploadForm({ onClose, onSuccess, albumId }: UploadFormPr
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
+
+  const [label, setLabel] = useState('')
+  const [labelError, setLabelError] = useState<string | null>(null)
+
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string>('') // '' = none, '__new__' = new
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [categoryError, setCategoryError] = useState<string | null>(null)
+
+  // Fetch existing categories on mount
+  useEffect(() => {
+    fetch('/api/categories')
+      .then((res) => res.ok ? res.json() : Promise.resolve([]))
+      .then((data) => {
+        if (Array.isArray(data)) setCategories(data)
+      })
+      .catch(() => {/* silently ignore */})
+  }, [])
 
   const validateAndSetFile = useCallback((f: File) => {
     setError(null)
@@ -66,11 +83,54 @@ export default function UploadForm({ onClose, onSuccess, albumId }: UploadFormPr
     if (f) validateAndSetFile(f)
   }, [validateAndSetFile])
 
+  const handleLabelChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setLabel(val)
+    if (val.length > 100) {
+      setLabelError('Label must be 100 characters or fewer.')
+    } else {
+      setLabelError(null)
+    }
+  }, [])
+
+  const handleNewCategoryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setNewCategoryName(val)
+    if (val.length > 100) {
+      setCategoryError('Category name must be 100 characters or fewer.')
+    } else {
+      setCategoryError(null)
+    }
+  }, [])
+
+  const handleCategorySelect = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCategory(e.target.value)
+    setCategoryError(null)
+    setNewCategoryName('')
+  }, [])
+
+  const hasValidationErrors = !!labelError || !!categoryError
+
   const handleUpload = useCallback(async () => {
     if (!file) return
+
+    // Final client-side validation
+    if (label.length > 100) {
+      setLabelError('Label must be 100 characters or fewer.')
+      return
+    }
+    if (selectedCategory === '__new__' && newCategoryName.length > 100) {
+      setCategoryError('Category name must be 100 characters or fewer.')
+      return
+    }
+
     setUploading(true)
     setError(null)
     setProgress(0)
+
+    const categoryValue = selectedCategory === '__new__'
+      ? (newCategoryName.trim() || undefined)
+      : (selectedCategory || undefined)
 
     try {
       // 1. Request presigned URL
@@ -81,6 +141,8 @@ export default function UploadForm({ onClose, onSuccess, albumId }: UploadFormPr
           filename: file.name,
           contentType: file.type,
           fileSize: file.size,
+          label: label || undefined,
+          category: categoryValue,
         }),
       })
 
@@ -116,7 +178,11 @@ export default function UploadForm({ onClose, onSuccess, albumId }: UploadFormPr
       const confirmRes = await fetch('/api/upload/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mediaId }),
+        body: JSON.stringify({
+          mediaId,
+          label: label || undefined,
+          category: categoryValue,
+        }),
       })
 
       if (!confirmRes.ok) {
@@ -145,13 +211,15 @@ export default function UploadForm({ onClose, onSuccess, albumId }: UploadFormPr
         uploadedAt: m.uploadedAt,
         contentType: m.contentType,
         s3Key: m.s3Key,
+        label: m.label ?? null,
+        category: m.category ?? null,
       })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed.')
     } finally {
       setUploading(false)
     }
-  }, [file, albumId, onSuccess])
+  }, [file, label, selectedCategory, newCategoryName, albumId, onSuccess])
 
   return (
     <div
@@ -177,6 +245,70 @@ export default function UploadForm({ onClose, onSuccess, albumId }: UploadFormPr
           <p className="text-sm text-gray-600 mb-3 truncate">
             {file.name} ({(file.size / 1024 / 1024).toFixed(1)} MB)
           </p>
+        )}
+
+        {/* Label input */}
+        <div className="mb-3">
+          <label htmlFor="upload-label" className="block text-sm text-gray-700 mb-1">
+            Label <span className="text-gray-400">(optional)</span>
+          </label>
+          <input
+            id="upload-label"
+            type="text"
+            maxLength={100}
+            value={label}
+            onChange={handleLabelChange}
+            disabled={uploading}
+            placeholder="e.g. Beach sunset"
+            className="block w-full text-sm border border-gray-300 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
+            aria-describedby={labelError ? 'label-error' : undefined}
+          />
+          {labelError && (
+            <p id="label-error" role="alert" className="text-xs text-red-600 mt-1">{labelError}</p>
+          )}
+        </div>
+
+        {/* Category selector */}
+        <div className="mb-3">
+          <label htmlFor="upload-category" className="block text-sm text-gray-700 mb-1">
+            Category <span className="text-gray-400">(optional)</span>
+          </label>
+          <select
+            id="upload-category"
+            value={selectedCategory}
+            onChange={handleCategorySelect}
+            disabled={uploading}
+            className="block w-full text-sm border border-gray-300 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
+          >
+            <option value="">— None —</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.name}>{cat.name}</option>
+            ))}
+            <option value="__new__">New category…</option>
+          </select>
+        </div>
+
+        {/* New category name input */}
+        {selectedCategory === '__new__' && (
+          <div className="mb-3">
+            <label htmlFor="upload-new-category" className="block text-sm text-gray-700 mb-1">
+              New category name
+            </label>
+            <input
+              id="upload-new-category"
+              type="text"
+              maxLength={100}
+              value={newCategoryName}
+              onChange={handleNewCategoryChange}
+              disabled={uploading}
+              placeholder="e.g. Holidays"
+              className="block w-full text-sm border border-gray-300 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
+              aria-describedby={categoryError ? 'category-error' : undefined}
+            />
+            {categoryError && (
+              <p id="category-error" role="alert" className="text-xs text-red-600 mt-1">{categoryError}</p>
+            )}
+          </div>
         )}
 
         {error && (
@@ -208,7 +340,7 @@ export default function UploadForm({ onClose, onSuccess, albumId }: UploadFormPr
           </button>
           <button
             onClick={handleUpload}
-            disabled={!file || uploading || !!error}
+            disabled={!file || uploading || !!error || hasValidationErrors}
             className="px-4 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {uploading ? 'Uploading…' : 'Upload'}
