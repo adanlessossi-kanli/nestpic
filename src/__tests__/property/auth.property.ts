@@ -73,8 +73,8 @@ describe('Auth service properties', () => {
           await createSession(user);
 
           // Verify the INSERT used a 7-day interval
-          const insertCall = mockQuery.mock.calls.find(([sql]: [string]) =>
-            sql.includes('INSERT INTO sessions')
+          const insertCall = mockQuery.mock.calls.find((args: unknown[]) =>
+            (args[0] as string).includes('INSERT INTO sessions')
           );
           expect(insertCall).toBeDefined();
           const [insertSql] = insertCall as [string];
@@ -82,9 +82,9 @@ describe('Auth service properties', () => {
 
           // Verify session data was populated with the user
           expect(newSession.save).toHaveBeenCalled();
-          expect(newSession.userId).toBe(user.id);
-          expect(newSession.email).toBe(user.email);
-          expect(newSession.name).toBe(user.name);
+          expect((newSession as Record<string, unknown>).userId).toBe(user.id);
+          expect((newSession as Record<string, unknown>).email).toBe(user.email);
+          expect((newSession as Record<string, unknown>).name).toBe(user.name);
         }
       ),
       { numRuns: 100 }
@@ -119,8 +119,8 @@ describe('Auth service properties', () => {
           const { destroySession } = await import('@/lib/auth/session');
           await destroySession();
 
-          const deleteCall = mockQuery.mock.calls.find(([sql]: [string]) =>
-            sql.includes('DELETE FROM sessions')
+          const deleteCall = mockQuery.mock.calls.find((args: unknown[]) =>
+            (args[0] as string).includes('DELETE FROM sessions')
           );
           expect(deleteCall).toBeDefined();
           expect(deleteCall![1]).toContain(sessionId);
@@ -256,8 +256,8 @@ describe('Auth service properties', () => {
           await createSession(user);
 
           // Old session must be deleted from DB
-          const deleteCall = mockQuery.mock.calls.find(([sql]: [string]) =>
-            sql.includes('DELETE FROM sessions')
+          const deleteCall = mockQuery.mock.calls.find((args: unknown[]) =>
+            (args[0] as string).includes('DELETE FROM sessions')
           );
           expect(deleteCall).toBeDefined();
           expect(deleteCall![1]).toContain(existingSessionId);
@@ -266,7 +266,7 @@ describe('Auth service properties', () => {
           expect(existingSession.destroy).toHaveBeenCalled();
 
           // New session must be saved with a different ID
-          expect(freshSession.sessionId).toBe(newSessionId);
+          expect((freshSession as Record<string, unknown>).sessionId).toBe(newSessionId);
           expect(freshSession.save).toHaveBeenCalled();
         }
       ),
@@ -274,3 +274,6 @@ describe('Auth service properties', () => {
     );
   });
 });
+
+
+

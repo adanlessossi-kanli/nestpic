@@ -81,7 +81,8 @@ export async function GET(request: NextRequest) {
   const items: FeedItem[] = await Promise.all(
     pageRows.map(async (row) => {
       let thumbnailUrl: string | null = null;
-      if (row.thumbnail_key) {
+      // Only generate a signed URL for valid thumbnail keys (must start with 'thumbnails/')
+      if (row.thumbnail_key && row.thumbnail_key.startsWith('thumbnails/')) {
         thumbnailUrl = await objectStore.generateSignedGetUrl(row.thumbnail_key, SIGNED_URL_EXPIRY);
       }
       return {

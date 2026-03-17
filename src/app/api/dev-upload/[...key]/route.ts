@@ -4,18 +4,9 @@
  * This endpoint is only active in development mode.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { getDevStore } from '../store';
 
-// Use a global variable to persist across module re-evaluations in dev mode
-declare global {
-  // eslint-disable-next-line no-var
-  var __devStore: Map<string, { data: Buffer; contentType: string }> | undefined;
-}
-
-if (!global.__devStore) {
-  global.__devStore = new Map();
-}
-
-const devStore = global.__devStore;
+const devStore = getDevStore();
 
 export async function PUT(
   request: NextRequest,
@@ -53,7 +44,7 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  return new NextResponse(entry.data, {
+  return new NextResponse(entry.data as unknown as BodyInit, {
     status: 200,
     headers: { 'Content-Type': entry.contentType },
   });
@@ -97,8 +88,4 @@ export async function DELETE(
   devStore.delete(objectKey);
 
   return new NextResponse(null, { status: 204 });
-}
-
-export function getDevStore() {
-  return devStore;
 }

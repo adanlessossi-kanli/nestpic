@@ -28,13 +28,15 @@ interface PresignResponse {
 }
 
 interface ConfirmResponse {
-  id: string
-  thumbnailUrl: string | null
-  uploaderName: string
-  uploaderId: string
-  uploadedAt: string
-  contentType: string
-  s3Key: string
+  media: {
+    id: string;
+    thumbnailUrl: string | null;
+    uploaderName: string;
+    uploaderId: string;
+    uploadedAt: string;
+    contentType: string;
+    s3Key: string;
+  };
 }
 
 export default function UploadForm({ onClose, onSuccess, albumId }: UploadFormProps) {
@@ -124,24 +126,25 @@ export default function UploadForm({ onClose, onSuccess, albumId }: UploadFormPr
       }
 
       const confirmed: ConfirmResponse = await confirmRes.json()
+      const m = confirmed.media
 
       // 4. If albumId provided, add media to album
       if (albumId) {
         await fetch(`/api/albums/${albumId}/media`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mediaId: confirmed.id }),
+          body: JSON.stringify({ mediaId: m.id }),
         })
       }
 
       onSuccess({
-        id: confirmed.id,
-        thumbnailUrl: confirmed.thumbnailUrl,
-        uploaderName: confirmed.uploaderName,
-        uploaderId: confirmed.uploaderId,
-        uploadedAt: confirmed.uploadedAt,
-        contentType: confirmed.contentType,
-        s3Key: confirmed.s3Key,
+        id: m.id,
+        thumbnailUrl: m.thumbnailUrl,
+        uploaderName: m.uploaderName,
+        uploaderId: m.uploaderId,
+        uploadedAt: m.uploadedAt,
+        contentType: m.contentType,
+        s3Key: m.s3Key,
       })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed.')

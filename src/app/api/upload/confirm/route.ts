@@ -61,8 +61,11 @@ export async function POST(request: NextRequest) {
       s3Key: media.s3_key,
       contentType: media.content_type,
       fileSize: media.file_size,
-      uploaderId: media.uploader_id,
+      uploaderId: session.userId,
+      uploaderName: session.name,
+      uploadedAt: new Date().toISOString(),
       status: 'active',
+      thumbnailUrl: null,
     },
   });
 }

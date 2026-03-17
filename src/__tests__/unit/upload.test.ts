@@ -60,7 +60,7 @@ describe('validateFile', () => {
 
   it('accepts all supported MIME types', async () => {
     const { validateFile, ACCEPTED_MIME_TYPES } = await import('@/lib/upload/validateFile');
-    for (const mimeType of ACCEPTED_MIME_TYPES) {
+    for (const mimeType of Array.from(ACCEPTED_MIME_TYPES)) {
       const result = validateFile({ mimeType, size: 1024 });
       expect(result.ok).toBe(true);
     }
@@ -195,8 +195,8 @@ describe('POST /api/upload/presign', () => {
       fileSize: 1024,
     }));
 
-    const insertCall = mockQuery.mock.calls.find(([sql]: [string]) =>
-      sql.includes('INSERT INTO media')
+    const insertCall = mockQuery.mock.calls.find((args: unknown[]) =>
+      (args[0] as string).includes('INSERT INTO media')
     );
     expect(insertCall).toBeDefined();
     const params = insertCall![1] as unknown[];
@@ -334,8 +334,8 @@ describe('cleanupPendingMedia', () => {
     expect(mockDeleteObject).toHaveBeenCalledTimes(2);
     expect(mockDeleteObject).toHaveBeenCalledWith('originals/a.jpg');
     expect(mockDeleteObject).toHaveBeenCalledWith('originals/b.mp4');
-    const deleteCall = mockQuery.mock.calls.find(([sql]: [string]) =>
-      sql.includes('DELETE FROM media')
+    const deleteCall = mockQuery.mock.calls.find((args: unknown[]) =>
+      (args[0] as string).includes('DELETE FROM media')
     );
     expect(deleteCall).toBeDefined();
   });
@@ -391,3 +391,6 @@ describe('Upload Zod schemas', () => {
     expect(result.success).toBe(true);
   });
 });
+
+
+

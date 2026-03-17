@@ -1,5 +1,5 @@
 import 'server-only';
-import pg from 'pg';
+import pg, { type QueryResultRow } from 'pg';
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -7,7 +7,7 @@ const pool = new pg.Pool({
 
 export default pool;
 
-export async function query<T = unknown>(
+export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params?: unknown[]
 ): Promise<pg.QueryResult<T>> {

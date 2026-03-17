@@ -29,8 +29,8 @@ import { SwiftAdapter } from '@/lib/objectStore/swiftAdapter';
 import { S3Adapter } from '@/lib/objectStore/s3Adapter';
 
 // Access the shared mock send function
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockSend = (S3Module as any)._mockSend as ReturnType<typeof vi.fn>;
+// eslint-disable-next-line
+const mockSend = (S3Module as Record<string, unknown>)._mockSend as ReturnType<typeof vi.fn>;
 const mockGetSignedUrl = getSignedUrl as ReturnType<typeof vi.fn>;
 
 const SWIFT_CONFIG = {

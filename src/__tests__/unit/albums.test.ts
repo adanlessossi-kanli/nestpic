@@ -40,7 +40,7 @@ function makeAuthSession(userId = crypto.randomUUID(), sessionId = crypto.random
 }
 
 function makeRequest(url: string, method: string, body?: unknown): NextRequest {
-  const init: RequestInit = { method };
+  const init: { method: string; headers?: Record<string, string>; body?: string } = { method };
   if (body !== undefined) {
     init.headers = { 'content-type': 'application/json' };
     init.body = JSON.stringify(body);
@@ -104,8 +104,8 @@ describe('POST /api/albums', () => {
     const { POST } = await import('@/app/api/albums/route');
     await POST(makeRequest('http://localhost/api/albums', 'POST', { name: 'Vacation' }));
 
-    const insertCall = mockQuery.mock.calls.find(([sql]: [string]) =>
-      sql.includes('INSERT INTO albums')
+    const insertCall = mockQuery.mock.calls.find((args: unknown[]) =>
+      (args[0] as string).includes('INSERT INTO albums')
     );
     expect(insertCall).toBeDefined();
     const params = insertCall![1] as unknown[];
@@ -328,11 +328,11 @@ describe('DELETE /api/albums/:id', () => {
       { params: Promise.resolve({ id: albumId }) }
     );
 
-    const albumMediaDelete = mockQuery.mock.calls.find(([sql]: [string]) =>
-      sql.includes('DELETE FROM album_media')
+    const albumMediaDelete = mockQuery.mock.calls.find((args: unknown[]) =>
+      (args[0] as string).includes('DELETE FROM album_media')
     );
-    const albumDelete = mockQuery.mock.calls.find(([sql]: [string]) =>
-      sql.includes('DELETE FROM albums')
+    const albumDelete = mockQuery.mock.calls.find((args: unknown[]) =>
+      (args[0] as string).includes('DELETE FROM albums')
     );
     expect(albumMediaDelete).toBeDefined();
     expect(albumDelete).toBeDefined();
@@ -355,8 +355,8 @@ describe('DELETE /api/albums/:id', () => {
       { params: Promise.resolve({ id: albumId }) }
     );
 
-    const mediaDelete = mockQuery.mock.calls.find(([sql]: [string]) =>
-      sql.includes('DELETE FROM media')
+    const mediaDelete = mockQuery.mock.calls.find((args: unknown[]) =>
+      (args[0] as string).includes('DELETE FROM media')
     );
     expect(mediaDelete).toBeUndefined();
   });
@@ -480,3 +480,6 @@ describe('Album Zod schemas', () => {
     expect(addMediaToAlbumSchema.safeParse({ mediaId: crypto.randomUUID() }).success).toBe(true);
   });
 });
+
+
+

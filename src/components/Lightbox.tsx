@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useCallback } from 'react'
-import Image from 'next/image'
 import type { FeedItem } from '@/app/api/feed/route'
 
 interface LightboxProps {
@@ -35,7 +34,6 @@ export default function Lightbox({ item, mediaUrl, items, onClose, onNavigate }:
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose, goPrev, goNext])
 
-  // Prevent body scroll while open
   useEffect(() => {
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
@@ -49,7 +47,6 @@ export default function Lightbox({ item, mediaUrl, items, onClose, onNavigate }:
       aria-label="Media lightbox"
       onClick={onClose}
     >
-      {/* Close button */}
       <button
         className="absolute top-4 right-4 text-white text-3xl leading-none hover:text-gray-300 focus:outline-none"
         onClick={onClose}
@@ -58,7 +55,6 @@ export default function Lightbox({ item, mediaUrl, items, onClose, onNavigate }:
         ×
       </button>
 
-      {/* Prev button */}
       {hasPrev && (
         <button
           className="absolute left-4 text-white text-4xl leading-none hover:text-gray-300 focus:outline-none px-2"
@@ -69,26 +65,22 @@ export default function Lightbox({ item, mediaUrl, items, onClose, onNavigate }:
         </button>
       )}
 
-      {/* Image */}
       <div
         className="relative max-w-[90vw] max-h-[90vh] w-full h-full flex items-center justify-center"
         onClick={(e) => e.stopPropagation()}
       >
         {mediaUrl ? (
-          <Image
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={mediaUrl}
             alt={`Photo by ${item.uploaderName}`}
-            fill
-            className="object-contain"
-            sizes="90vw"
-            priority
+            className="max-w-full max-h-[90vh] object-contain"
           />
         ) : (
           <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
         )}
       </div>
 
-      {/* Next button */}
       {hasNext && (
         <button
           className="absolute right-4 text-white text-4xl leading-none hover:text-gray-300 focus:outline-none px-2"
@@ -99,7 +91,6 @@ export default function Lightbox({ item, mediaUrl, items, onClose, onNavigate }:
         </button>
       )}
 
-      {/* Caption */}
       <div className="absolute bottom-4 left-0 right-0 text-center text-white text-sm opacity-75 pointer-events-none">
         {item.uploaderName} · {new Date(item.uploadedAt).toLocaleDateString()}
       </div>

@@ -81,11 +81,11 @@ export function createObjectStoreSync(): ObjectStore {
   const config = validateConfig(process.env as Record<string, string | undefined>);
 
   if (process.env.NODE_ENV === 'production') {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line
     const { S3Adapter } = require('./s3Adapter') as typeof import('./s3Adapter');
     return new S3Adapter(config);
   } else {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line
     const { SwiftAdapter } = require('./swiftAdapter') as typeof import('./swiftAdapter');
     return new SwiftAdapter(config);
   }

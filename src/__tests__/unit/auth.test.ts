@@ -173,11 +173,11 @@ describe('Session rotation on sign-in', () => {
     await createSession({ id: userId, email: 'alice@example.com', name: 'Alice' });
 
     expect(existingSession.destroy).toHaveBeenCalled();
-    const deleteCall = mockQuery.mock.calls.find(([sql]: [string]) =>
-      sql.includes('DELETE FROM sessions')
+    const deleteCall = mockQuery.mock.calls.find((args: unknown[]) =>
+      (args[0] as string).includes('DELETE FROM sessions')
     );
     expect(deleteCall![1]).toContain(oldSessionId);
-    expect(freshSession.sessionId).toBe(newSessionId);
+    expect((freshSession as Record<string, unknown>).sessionId).toBe(newSessionId);
   });
 });
 
@@ -193,13 +193,12 @@ describe('POST /api/auth/signout', () => {
     mockQuery.mockResolvedValue({ rows: [] });
 
     const { POST } = await import('@/app/api/auth/signout/route');
-    const req = new NextRequest('http://localhost/api/auth/signout', { method: 'POST' });
-    const res = await POST(req);
+    const res = await POST();
 
     expect(res.status).toBe(200);
     expect(session.destroy).toHaveBeenCalled();
-    const deleteCall = mockQuery.mock.calls.find(([sql]: [string]) =>
-      sql.includes('DELETE FROM sessions')
+    const deleteCall = mockQuery.mock.calls.find((args: unknown[]) =>
+      (args[0] as string).includes('DELETE FROM sessions')
     );
     expect(deleteCall).toBeDefined();
   });
@@ -535,3 +534,6 @@ describe('Auth Zod schemas', () => {
     expect(result.success).toBe(false);
   });
 });
+
+
+

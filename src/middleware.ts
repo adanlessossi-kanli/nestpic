@@ -44,7 +44,27 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
   if (isProtectedRoute(pathname)) {
-    const session = await getIronSession<SessionData>(request.cookies, SESSION_OPTIONS);
+    // iron-session requires a ResponseCookies-compatible store; in middleware
+    // we only need to read the session, so we pass a minimal adapter.
+    const cookieHeader = request.headers.get('cookie') ?? '';
+    const cookieMap = Object.fromEntries(
+      cookieHeader.split(';').map((c) => {
+        const [k, ...v] = c.trim().split('=');
+        return [k.trim(), decodeURIComponent(v.join('='))];
+      })
+    );
+    const readonlyCookies = {
+      get: (name: string) => {
+        const value = cookieMap[name];
+        return value !== undefined ? { name, value } : undefined;
+      },
+      // iron-session only calls get() when reading; set/delete are no-ops here
+      set: () => {},
+      delete: () => {},
+    };
+
+    // eslint-disable-next-line
+    const session = await getIronSession<SessionData>(readonlyCookies as any, SESSION_OPTIONS);
 
     if (!session.sessionId || !session.userId) {
       // API routes return 401; page routes redirect to /signin

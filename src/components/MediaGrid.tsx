@@ -1,4 +1,6 @@
-import Image from 'next/image'
+'use client'
+
+import { useState } from 'react'
 import type { FeedItem } from '@/app/api/feed/route'
 
 interface MediaGridProps {
@@ -17,6 +19,20 @@ function formatDate(iso: string): string {
   })
 }
 
+function Thumbnail({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return <div className="absolute inset-0 bg-gray-200" />
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      className="absolute inset-0 w-full h-full object-cover"
+    />
+  )
+}
+
 export default function MediaGrid({ items, onItemClick, currentUserId, onDelete }: MediaGridProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -30,12 +46,9 @@ export default function MediaGrid({ items, onItemClick, currentUserId, onDelete 
           >
             <div className="relative w-full aspect-video bg-gray-200">
               {item.thumbnailUrl ? (
-                <Image
+                <Thumbnail
                   src={item.thumbnailUrl}
                   alt={`Media by ${item.uploaderName}`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                 />
               ) : (
                 <div className="absolute inset-0 bg-gray-200" />
