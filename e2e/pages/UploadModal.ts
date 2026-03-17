@@ -32,6 +32,11 @@ export class UploadModal {
     await this.fileInput.setInputFiles(filePath)
   }
 
+  async selectTestVideo() {
+    const fixturePath = path.join(__dirname, '..', 'fixtures', 'test-video.mp4')
+    await this.fileInput.setInputFiles(fixturePath)
+  }
+
   async selectTestImage() {
     // Use a minimal 1x1 JPEG for testing
     const fixturePath = path.join(__dirname, '..', 'fixtures', 'test-image.jpg')

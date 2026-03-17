@@ -4,7 +4,6 @@ import { query } from '@/lib/db';
 import { getObjectStore } from '@/lib/objectStore';
 import { feedQuerySchema } from '@/lib/schemas/feed';
 import { ok, err } from '@/lib/api/response';
-export type { FeedItem } from '@/lib/types/media';
 import type { FeedItem } from '@/lib/types/media';
 
 const PAGE_SIZE = 30;

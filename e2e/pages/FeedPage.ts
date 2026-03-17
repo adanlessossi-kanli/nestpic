@@ -24,7 +24,7 @@ export class FeedPage {
   }
 
   async clickFirstMediaItem() {
-    await this.mediaCards.first().getByRole('button').click()
+    await this.mediaCards.first().getByRole('button', { name: /Open media/ }).click()
   }
 
   async scrollToBottom() {

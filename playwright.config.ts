@@ -23,7 +23,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
     env: {
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5433/nestpic_test',
@@ -35,7 +35,8 @@ export default defineConfig({
       CDN_BASE_URL: 'http://localhost:8081',
       CDN_KEY_PAIR_ID: 'local-key-pair-id',
       CDN_PRIVATE_KEY: 'local-private-key-placeholder',
-      NODE_ENV: 'development',
+      NODE_ENV: 'test',
+      DISABLE_LOCAL_WORKER: 'true',
       RATE_LIMIT_DISABLED: 'true',
     },
   },

@@ -23,11 +23,12 @@ function Thumbnail({ src, alt }: { src: string; alt: string }) {
   const [failed, setFailed] = useState(false)
   if (failed) return <div className="absolute inset-0 bg-gray-200" />
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+      <img
       src={src}
       alt={alt}
       onError={() => setFailed(true)}
+      onContextMenu={(e) => e.preventDefault()}
+      draggable={false}
       className="absolute inset-0 w-full h-full object-cover"
     />
   )
