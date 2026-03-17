@@ -4,6 +4,9 @@ import { query } from '@/lib/db';
 import { getObjectStore } from '@/lib/objectStore';
 import { feedQuerySchema } from '@/lib/schemas/feed';
 import { ok, err } from '@/lib/api/response';
+import type { FeedItem } from '@/lib/types/media';
+
+export type { FeedItem };
 
 const PAGE_SIZE = 30;
 const SIGNED_URL_EXPIRY = 3600;

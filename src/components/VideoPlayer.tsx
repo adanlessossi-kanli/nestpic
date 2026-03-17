@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useCallback } from 'react'
-import type { FeedItem } from '@/app/api/feed/route'
+import type { FeedItem } from '@/lib/types/media'
 
 interface VideoPlayerProps {
   item: FeedItem

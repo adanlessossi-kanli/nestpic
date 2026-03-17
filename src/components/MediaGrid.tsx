@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { FeedItem } from '@/app/api/feed/route'
+import type { FeedItem } from '@/lib/types/media'
 
 interface MediaGridProps {
   items: FeedItem[]

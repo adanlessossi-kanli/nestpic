@@ -1,4 +1,3 @@
-import 'server-only';
 import { query } from '@/lib/db';
 import { processMedia } from './processor';
 
@@ -10,11 +9,15 @@ async function pollPendingThumbnails(): Promise<void> {
   );
 
   for (const row of result.rows) {
+    console.log(`[localWorker] Processing media ${row.id} (${row.content_type}) key=${row.s3_key}`);
     try {
       await processMedia(row.id, row.s3_key, row.content_type);
+      console.log(`[localWorker] Successfully processed media ${row.id}`);
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
-      if (code === 'NoSuchKey') {
+      const message = (err as { message?: string })?.message ?? '';
+      const isNotFound = code === 'NoSuchKey' || message.includes('404');
+      if (isNotFound) {
         // Original no longer in store (e.g. lost on restart) — delete the orphaned record
         await query('DELETE FROM media WHERE id = $1', [row.id]);
         console.warn(`[localWorker] Original not found for media ${row.id}, deleted orphaned record`);

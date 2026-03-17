@@ -117,10 +117,33 @@ async function saveAuthState(
   const context = await browser.newContext()
   const page = await context.newPage()
 
-  await page.goto(`${BASE_URL}/signin`)
+  // Retry navigation in case the server is briefly restarting (e.g. hot reload)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await page.goto(`${BASE_URL}/signin`, { timeout: 15_000 })
+      break
+    } catch (e) {
+      if (attempt === 3) throw e
+      console.warn(`[seed] page.goto attempt ${attempt} failed, retrying in 3s…`)
+      await new Promise(r => setTimeout(r, 3_000))
+    }
+  }
+
   await page.fill('#email', user.email)
   await page.fill('#password', user.password)
-  await page.click('button[type="submit"]')
+
+  const [response] = await Promise.all([
+    page.waitForResponse(`${BASE_URL}/api/auth/signin`),
+    page.click('button[type="submit"]'),
+  ])
+
+  if (!response.ok()) {
+    const body = await response.json().catch(() => ({}))
+    throw new Error(
+      `Sign-in failed for ${user.email} (${response.status()}): ${JSON.stringify(body)}`
+    )
+  }
+
   await page.waitForURL(`${BASE_URL}/feed`, { timeout: 15_000 })
 
   const stateFile = path.join(AUTH_DIR, `${userKey}.json`)

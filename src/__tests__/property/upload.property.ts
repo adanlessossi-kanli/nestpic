@@ -42,7 +42,7 @@ vi.mock('fluent-ffmpeg', () => {
   return { default: () => chain };
 });
 
-vi.mock('fs', () => ({ default: { unlinkSync: () => {} } }));
+vi.mock('fs', () => ({ default: { unlinkSync: vi.fn(), writeFileSync: vi.fn() } }));
 
 import {
   validateFile,
@@ -259,15 +259,14 @@ describe('Upload property tests', () => {
           vi.clearAllMocks();
 
           // Mock fetch: GET returns a small ArrayBuffer, PUT returns ok
-          global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          global.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
             if (init?.method === 'PUT') {
               return Promise.resolve({ ok: true } as Response);
             }
-            // GET — return a small ArrayBuffer
             return Promise.resolve({
               ok: true,
               arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
-            } as Response);
+            } as unknown as Response);
           });
 
           // objectStore mock: headObject, generateSignedGetUrl, generatePresignedPutUrl

@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { cookies } from 'next/headers'
 import InfiniteScroll from '@/components/InfiniteScroll'
 import FeedLoading from './loading'
-import type { FeedItem } from '@/app/api/feed/route'
+import type { FeedItem } from '@/lib/types/media'
 import { getValidSession } from '@/lib/auth/session'
 
 interface FeedResponse {

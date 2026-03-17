@@ -6,8 +6,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDevStore } from '../store';
 
-const devStore = getDevStore();
-
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ key: string[] }> }
@@ -23,7 +21,8 @@ export async function PUT(
   const arrayBuffer = await request.arrayBuffer();
   const data = Buffer.from(arrayBuffer);
 
-  devStore.set(objectKey, { data, contentType });
+  getDevStore().set(objectKey, { data, contentType });
+  console.log(`[dev-upload] PUT ${objectKey} (${data.length} bytes) — store size: ${getDevStore().size}`);
 
   return new NextResponse(null, { status: 200 });
 }
@@ -38,7 +37,8 @@ export async function GET(
 
   const { key } = await params;
   const objectKey = key.join('/');
-  const entry = devStore.get(objectKey);
+  const entry = getDevStore().get(objectKey);
+  console.log(`[dev-upload] GET ${objectKey} — found: ${!!entry} — store size: ${getDevStore().size}`);
 
   if (!entry) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -60,7 +60,7 @@ export async function HEAD(
 
   const { key } = await params;
   const objectKey = key.join('/');
-  const entry = devStore.get(objectKey);
+  const entry = getDevStore().get(objectKey);
 
   if (!entry) {
     return new NextResponse(null, { status: 404 });
@@ -85,7 +85,7 @@ export async function DELETE(
 
   const { key } = await params;
   const objectKey = key.join('/');
-  devStore.delete(objectKey);
+  getDevStore().delete(objectKey);
 
   return new NextResponse(null, { status: 204 });
 }

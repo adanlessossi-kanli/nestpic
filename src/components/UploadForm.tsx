@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
-import type { FeedItem } from '@/app/api/feed/route'
+import type { FeedItem } from '@/lib/types/media'
 
 const ACCEPTED_MIME_TYPES = [
   'image/jpeg',

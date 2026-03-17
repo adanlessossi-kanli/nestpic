@@ -146,11 +146,7 @@ describe('Property A — processImage produces valid JPEG (FF D8 FF magic bytes)
 
           const s3Key = `originals/${mediaId}.jpg`;
 
-          // Dev store with getObjectBuffer (processImage fast path)
-          const fakeImageBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47]); // PNG-like bytes
           const mockStore = {
-            getObjectBuffer: vi.fn().mockReturnValue(fakeImageBuffer),
-            putObjectBuffer: vi.fn(),
             generateSignedGetUrl: vi.fn().mockResolvedValue(`https://s3.example.com/${s3Key}`),
             generatePresignedPutUrl: vi.fn().mockResolvedValue(`https://s3.example.com/put/${s3Key}`),
             deleteObject: vi.fn(),
@@ -158,23 +154,35 @@ describe('Property A — processImage produces valid JPEG (FF D8 FF magic bytes)
           };
           mockGetObjectStore.mockResolvedValue(mockStore);
 
-          // Capture what uploadThumbnail writes
-          let capturedBuffer: Buffer | null = null;
-          mockStore.putObjectBuffer.mockImplementation((_k: string, d: Buffer) => {
-            capturedBuffer = d;
+          // Capture what uploadThumbnail PUTs
+          let capturedPutBody: Buffer | ArrayBuffer | null = null;
+          global.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+            if (init?.method === 'PUT') {
+              capturedPutBody = init.body as Buffer | ArrayBuffer;
+              return Promise.resolve({ ok: true } as Response);
+            }
+            return Promise.resolve({
+              ok: true,
+              arrayBuffer: () => Promise.resolve(Buffer.from([0x89, 0x50, 0x4e, 0x47]).buffer),
+            } as unknown as Response);
           });
 
           const { processMedia } = await import('@/lib/thumbnail/processor');
           await processMedia(mediaId, s3Key, contentType);
 
-          // The thumbnail must have been written
-          expect(capturedBuffer).not.toBeNull();
+          expect(capturedPutBody).not.toBeNull();
+
+          let sentBytes: Buffer;
+          if (Buffer.isBuffer(capturedPutBody)) {
+            sentBytes = capturedPutBody as Buffer;
+          } else {
+            sentBytes = Buffer.from(capturedPutBody as ArrayBuffer);
+          }
 
           // Must start with JPEG magic bytes FF D8 FF
-          // (sharp mock always returns [0xff, 0xd8, 0xff, 0xe0])
-          expect(capturedBuffer![0]).toBe(0xff);
-          expect(capturedBuffer![1]).toBe(0xd8);
-          expect(capturedBuffer![2]).toBe(0xff);
+          expect(sentBytes[0]).toBe(0xff);
+          expect(sentBytes[1]).toBe(0xd8);
+          expect(sentBytes[2]).toBe(0xff);
         }
       ),
       { numRuns: 20 }
@@ -457,11 +465,14 @@ describe('Property D — processVideo calls generateSignedGetUrl and passes URL 
 
   it('Property D: when store has no getObjectBuffer, processVideo calls generateSignedGetUrl and passes URL to ffmpeg', async () => {
     // Validates: Requirements 3.8
+    //
+    // After the fix: processVideo fetches the source via HTTP (using generateSignedGetUrl),
+    // writes it to a temp file, and passes the LOCAL FILE PATH to ffmpeg.
+    // generateSignedGetUrl is still called — the URL is used for the HTTP fetch.
     const mediaId = crypto.randomUUID();
     const s3Key = `originals/${mediaId}.mp4`;
     const expectedSignedUrl = `https://s3.example.com/signed/${s3Key}?token=abc`;
 
-    // Production store: no getObjectBuffer, no putObjectBuffer
     const mockGenerateSignedGetUrl = vi.fn().mockResolvedValue(expectedSignedUrl);
     const mockStore = {
       generateSignedGetUrl: mockGenerateSignedGetUrl,
@@ -471,8 +482,13 @@ describe('Property D — processVideo calls generateSignedGetUrl and passes URL 
     };
     mockGetObjectStore.mockResolvedValue(mockStore);
 
-    // Mock fetch for the thumbnail PUT
-    global.fetch = vi.fn().mockResolvedValue({ ok: true } as Response);
+    global.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') return Promise.resolve({ ok: true } as Response);
+      return Promise.resolve({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(Buffer.from('fake-video').buffer),
+      } as unknown as Response);
+    });
 
     ffmpegInputCapture = null;
 
@@ -482,12 +498,12 @@ describe('Property D — processVideo calls generateSignedGetUrl and passes URL 
     // generateSignedGetUrl must have been called for the source video
     expect(mockGenerateSignedGetUrl).toHaveBeenCalledWith(s3Key, expect.any(Number));
 
-    // ffmpeg must have received the signed URL (not a local file path)
+    // ffmpeg receives a LOCAL temp file path (not the HTTP URL directly)
     expect(ffmpegInputCapture).not.toBeNull();
-    expect(ffmpegInputCapture).toBe(expectedSignedUrl);
+    expect(ffmpegInputCapture).not.toMatch(/^https?:\/\//);
   });
 
-  it('Property D: for any video content type, production path passes signed URL to ffmpeg', async () => {
+  it('Property D: for any video content type, production path fetches via signed URL then passes local file to ffmpeg', async () => {
     // Validates: Requirements 3.8
     await fc.assert(
       fc.asyncProperty(
@@ -501,7 +517,6 @@ describe('Property D — processVideo calls generateSignedGetUrl and passes URL 
           const s3Key = `originals/${mediaId}.mp4`;
           const signedUrl = `https://s3.example.com/signed/${s3Key}?token=${crypto.randomUUID()}`;
 
-          // Production store: no getObjectBuffer
           const mockGenerateSignedGetUrl = vi.fn().mockResolvedValue(signedUrl);
           const mockStore = {
             generateSignedGetUrl: mockGenerateSignedGetUrl,
@@ -511,7 +526,13 @@ describe('Property D — processVideo calls generateSignedGetUrl and passes URL 
           };
           mockGetObjectStore.mockResolvedValue(mockStore);
 
-          global.fetch = vi.fn().mockResolvedValue({ ok: true } as Response);
+          global.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+            if (init?.method === 'PUT') return Promise.resolve({ ok: true } as Response);
+            return Promise.resolve({
+              ok: true,
+              arrayBuffer: () => Promise.resolve(Buffer.from('fake-video').buffer),
+            } as unknown as Response);
+          });
 
           const { processMedia } = await import('@/lib/thumbnail/processor');
           await processMedia(mediaId, s3Key, contentType);
@@ -519,17 +540,9 @@ describe('Property D — processVideo calls generateSignedGetUrl and passes URL 
           // generateSignedGetUrl must have been called for the source
           expect(mockGenerateSignedGetUrl).toHaveBeenCalledWith(s3Key, expect.any(Number));
 
-          // ffmpeg must receive the signed URL (HTTP URL, not local path)
+          // ffmpeg receives a local temp file path (not the HTTP URL)
           expect(ffmpegInputCapture).not.toBeNull();
-          expect(ffmpegInputCapture).toBe(signedUrl);
-
-          // Must be an HTTP URL (production path)
-          expect(ffmpegInputCapture).toMatch(/^https?:\/\//);
-
-          // Must NOT be a local file path
-          const isLocalPath = ffmpegInputCapture !== null &&
-            (ffmpegInputCapture.startsWith('/') || ffmpegInputCapture.startsWith(os.tmpdir()));
-          expect(isLocalPath).toBe(false);
+          expect(ffmpegInputCapture).not.toMatch(/^https?:\/\//);
         }
       ),
       { numRuns: 15 }

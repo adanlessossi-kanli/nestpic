@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { cookies } from 'next/headers'
 import AlbumInfiniteScroll from '@/components/AlbumInfiniteScroll'
 import AlbumLoading from '@/app/albums/[id]/loading'
-import type { FeedItem } from '@/app/api/feed/route'
+import type { FeedItem } from '@/lib/types/media'
 import { getValidSession } from '@/lib/auth/session'
 
 interface AlbumResponse {

@@ -5,7 +5,7 @@ import MediaGrid from '@/components/MediaGrid'
 import Lightbox from '@/components/Lightbox'
 import VideoPlayer from '@/components/VideoPlayer'
 import UploadForm from '@/components/UploadForm'
-import type { FeedItem } from '@/app/api/feed/route'
+import type { FeedItem } from '@/lib/types/media'
 
 interface AlbumInfiniteScrollProps {
   initialItems: FeedItem[]
