@@ -65,12 +65,19 @@ jobs:
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for services to be healthy..."
-          timeout 60 bash -c '
-            until \
-              [ "$(docker inspect --format="{{.State.Health.Status}}" $(docker compose -f docker-compose.test.yml ps -q postgres-test) 2>/dev/null)" = "healthy" ] && \
-              [ "$(docker inspect --format="{{.State.Health.Status}}" $(docker compose -f docker-compose.test.yml ps -q swift-test) 2>/dev/null)" = "healthy" ]; \
-            do sleep 3; done
-          ' || (echo "ERROR: Test services failed to become healthy within 60 seconds" && docker compose -f docker-compose.test.yml logs && exit 1)
+          for i in $(seq 1 20); do
+            PG_HEALTH=$(docker inspect $(docker compose -f docker-compose.test.yml ps -q postgres-test) --format '{{.State.Health.Status}}' 2>/dev/null || echo "starting")
+            SW_HEALTH=$(docker inspect $(docker compose -f docker-compose.test.yml ps -q swift-test) --format '{{.State.Health.Status}}' 2>/dev/null || echo "starting")
+            echo "Attempt $i: postgres=$PG_HEALTH swift=$SW_HEALTH"
+            if [ "$PG_HEALTH" = "healthy" ] && [ "$SW_HEALTH" = "healthy" ]; then
+              echo "All services healthy"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "ERROR: Test services failed to become healthy within 60 seconds"
+          docker compose -f docker-compose.test.yml logs
+          exit 1
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Run E2E tests
