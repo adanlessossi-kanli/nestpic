@@ -153,7 +153,7 @@ describe('Test 1 — Dev store module-instance mismatch', () => {
 
     // The thumbnail must have been uploaded via HTTP PUT
     const putCalls = fetchMock.mock.calls.filter(
-      ([, init]: [string, RequestInit?]) => init?.method === 'PUT'
+      (args: unknown[]) => (args[1] as RequestInit | undefined)?.method === 'PUT'
     );
     expect(putCalls.length).toBeGreaterThan(0);
   });
