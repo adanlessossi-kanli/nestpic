@@ -178,13 +178,10 @@ describe('Test 2 — Pooled buffer body corruption', () => {
     // Validates: Requirements 1.3
     fc.assert(
       fc.property(
-        fc.integer({ min: 1, max: 4096 }).chain((offset) =>
-          fc.uint8Array({ minLength: 4, maxLength: 100 }).map((jpegPayload) => ({
-            offset,
-            jpegPayload: Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Array.from(jpegPayload)]),
-          }))
-        ),
-        ({ offset, jpegPayload }) => {
+        fc.integer({ min: 1, max: 4096 }),
+        fc.uint8Array({ minLength: 4, maxLength: 100 }),
+        (offset, extraBytes) => {
+          const jpegPayload = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Array.from(extraBytes)])
           const slab = Buffer.allocUnsafe(offset + jpegPayload.length + 100);
           slab.fill(0xaa, 0, offset);
           jpegPayload.copy(slab, offset);
