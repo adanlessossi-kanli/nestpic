@@ -164,7 +164,7 @@ describe('CI/CD workflow properties', () => {
       return [];
     }
 
-    const knownSafeValues = new Set([
+    const knownSafeValues = [
       'localdev', 'localdev-secret', 'nestpic-test',
       'test-session-secret-change-in-production-32c',
       'local-key-pair-id', 'local-private-key-placeholder',
@@ -173,7 +173,7 @@ describe('CI/CD workflow properties', () => {
       'postgresql://postgres:postgres@localhost',
       'http://localhost',
       'ubuntu-latest', 'true', 'production', 'test', 'chromium', 'main',
-    ]);
+    ];
 
     const allStrings = collectStrings(workflow);
     const stringValues = allStrings.filter((v) => {

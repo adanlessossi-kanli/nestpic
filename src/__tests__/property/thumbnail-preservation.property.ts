@@ -176,7 +176,7 @@ describe('Property A — processImage produces valid JPEG (FF D8 FF magic bytes)
           if (Buffer.isBuffer(capturedPutBody)) {
             sentBytes = capturedPutBody as Buffer;
           } else {
-            sentBytes = Buffer.from(capturedPutBody as ArrayBuffer);
+            sentBytes = Buffer.from(capturedPutBody as unknown as ArrayBuffer);
           }
 
           // Must start with JPEG magic bytes FF D8 FF
@@ -238,7 +238,7 @@ describe('Property A — processImage produces valid JPEG (FF D8 FF magic bytes)
           if (Buffer.isBuffer(capturedPutBody)) {
             sentBytes = capturedPutBody;
           } else {
-            sentBytes = Buffer.from(capturedPutBody as ArrayBuffer);
+            sentBytes = Buffer.from(capturedPutBody as unknown as ArrayBuffer);
           }
 
           // Must start with JPEG magic bytes FF D8 FF

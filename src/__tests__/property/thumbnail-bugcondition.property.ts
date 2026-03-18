@@ -181,7 +181,7 @@ describe('Test 2 — Pooled buffer body corruption', () => {
         fc.integer({ min: 1, max: 4096 }).chain((offset) =>
           fc.uint8Array({ minLength: 4, maxLength: 100 }).map((jpegPayload) => ({
             offset,
-            jpegPayload: Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...jpegPayload]),
+            jpegPayload: Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Array.from(jpegPayload)]),
           }))
         ),
         ({ offset, jpegPayload }) => {
@@ -261,7 +261,7 @@ describe('Test 2 — Pooled buffer body corruption', () => {
     if (Buffer.isBuffer(capturedBody)) {
       sentBytes = capturedBody as Buffer;
     } else {
-      sentBytes = Buffer.from(capturedBody as ArrayBuffer);
+      sentBytes = Buffer.from(capturedBody as unknown as ArrayBuffer);
     }
 
     expect(sentBytes[0]).toBe(0xff);
