@@ -65,21 +65,19 @@ jobs:
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for services to be healthy..."
-          echo "Running containers:"
           docker ps
           for i in $(seq 1 40); do
             PG_HEALTH=$(docker ps --filter "name=postgres-test" --format '{{.Status}}' 2>/dev/null || echo "")
-            SW_HEALTH=$(docker ps --filter "name=swift-test" --format '{{.Status}}' 2>/dev/null || echo "")
-            echo "Attempt $i/40: postgres='$PG_HEALTH' swift='$SW_HEALTH'"
-            if echo "$PG_HEALTH" | grep -q "(healthy)" && echo "$SW_HEALTH" | grep -q "(healthy)"; then
-              echo "All services healthy"
+            SW_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/info 2>/dev/null || echo "0")
+            echo "Attempt $i/40: postgres='$PG_HEALTH' swift_http='$SW_CODE'"
+            if echo "$PG_HEALTH" | grep -q "(healthy)" && [ "$SW_CODE" != "0" ] && [ "$SW_CODE" != "" ]; then
+              echo "All services ready"
               exit 0
             fi
             sleep 5
           done
-          echo "ERROR: Test services failed to become healthy within 200 seconds"
+          echo "ERROR: Test services failed to become ready within 200 seconds"
           docker ps -a
-          docker compose -f docker-compose.test.yml logs
           docker compose -f docker-compose.test.yml logs
           exit 1
       - name: Install Playwright browsers
