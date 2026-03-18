@@ -66,9 +66,16 @@ jobs:
         run: |
           echo "Waiting for services to be healthy..."
           for i in $(seq 1 20); do
-            PG_HEALTH=$(docker inspect $(docker compose -f docker-compose.test.yml ps -q postgres-test) --format '{{.State.Health.Status}}' 2>/dev/null || echo "starting")
-            SW_HEALTH=$(docker inspect $(docker compose -f docker-compose.test.yml ps -q swift-test) --format '{{.State.Health.Status}}' 2>/dev/null || echo "starting")
-            echo "Attempt $i: postgres=$PG_HEALTH swift=$SW_HEALTH"
+            PG_ID=$(docker compose -f docker-compose.test.yml ps -q postgres-test 2>/dev/null)
+            SW_ID=$(docker compose -f docker-compose.test.yml ps -q swift-test 2>/dev/null)
+            if [ -n "$PG_ID" ] && [ -n "$SW_ID" ]; then
+              PG_HEALTH=$(docker inspect "$PG_ID" --format '{{.State.Health.Status}}' 2>/dev/null || echo "starting")
+              SW_HEALTH=$(docker inspect "$SW_ID" --format '{{.State.Health.Status}}' 2>/dev/null || echo "starting")
+            else
+              PG_HEALTH="starting"
+              SW_HEALTH="starting"
+            fi
+            echo "Attempt $i/20: postgres=$PG_HEALTH swift=$SW_HEALTH"
             if [ "$PG_HEALTH" = "healthy" ] && [ "$SW_HEALTH" = "healthy" ]; then
               echo "All services healthy"
               exit 0
