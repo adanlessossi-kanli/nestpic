@@ -65,24 +65,21 @@ jobs:
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for services to be healthy..."
+          echo "Running containers:"
+          docker ps
           for i in $(seq 1 40); do
-            PG_ID=$(docker compose -f docker-compose.test.yml ps -q postgres-test 2>/dev/null)
-            SW_ID=$(docker compose -f docker-compose.test.yml ps -q swift-test 2>/dev/null)
-            if [ -n "$PG_ID" ] && [ -n "$SW_ID" ]; then
-              PG_HEALTH=$(docker inspect "$PG_ID" --format '{{.State.Health.Status}}' 2>/dev/null || echo "starting")
-              SW_HEALTH=$(docker inspect "$SW_ID" --format '{{.State.Health.Status}}' 2>/dev/null || echo "starting")
-            else
-              PG_HEALTH="starting"
-              SW_HEALTH="starting"
-            fi
-            echo "Attempt $i/40: postgres=$PG_HEALTH swift=$SW_HEALTH"
-            if [ "$PG_HEALTH" = "healthy" ] && [ "$SW_HEALTH" = "healthy" ]; then
+            PG_HEALTH=$(docker ps --filter "name=postgres-test" --format '{{.Status}}' 2>/dev/null || echo "")
+            SW_HEALTH=$(docker ps --filter "name=swift-test" --format '{{.Status}}' 2>/dev/null || echo "")
+            echo "Attempt $i/40: postgres='$PG_HEALTH' swift='$SW_HEALTH'"
+            if echo "$PG_HEALTH" | grep -q "(healthy)" && echo "$SW_HEALTH" | grep -q "(healthy)"; then
               echo "All services healthy"
               exit 0
             fi
             sleep 5
           done
           echo "ERROR: Test services failed to become healthy within 200 seconds"
+          docker ps -a
+          docker compose -f docker-compose.test.yml logs
           docker compose -f docker-compose.test.yml logs
           exit 1
       - name: Install Playwright browsers
