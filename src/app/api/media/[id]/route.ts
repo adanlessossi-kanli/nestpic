@@ -46,6 +46,11 @@ export async function GET(
   const objectStore = await getObjectStore();
   const mediaUrl = await objectStore.generateSignedGetUrl(row.s3_key, SIGNED_URL_EXPIRY);
 
+  let thumbnailUrl: string | null = null;
+  if (row.thumbnail_key && row.thumbnail_key.startsWith('thumbnails/')) {
+    thumbnailUrl = await objectStore.generateSignedGetUrl(row.thumbnail_key, SIGNED_URL_EXPIRY);
+  }
+
   return ok({
     id: row.id,
     uploaderId: row.uploader_id,
@@ -56,7 +61,7 @@ export async function GET(
       ? row.uploaded_at.toISOString()
       : String(row.uploaded_at),
     mediaUrl,
-    thumbnailKey: row.thumbnail_key,
+    thumbnailUrl,
   });
 }
 
