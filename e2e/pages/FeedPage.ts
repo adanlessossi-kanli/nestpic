@@ -12,6 +12,8 @@ export class FeedPage {
   async goto() {
     await this.page.goto('/feed')
     await this.page.waitForLoadState('networkidle')
+    // Wait for client component hydration (Upload button is rendered by InfiniteScroll)
+    await expect(this.uploadButton).toBeVisible({ timeout: 10000 })
   }
 
   async expectLoaded() {

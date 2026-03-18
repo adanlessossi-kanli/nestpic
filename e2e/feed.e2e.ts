@@ -60,9 +60,14 @@ test.describe('Family feed workflow', () => {
     // Click first media item
     await feed.mediaCards.first().getByRole('button', { name: /Open media/ }).click()
 
-    // Either lightbox or video player should open
-    const lightboxVisible = await lightbox.dialog.isVisible().catch(() => false)
+    // Either lightbox or video player should open — wait for one to appear
     const videoDialog = page.getByRole('dialog', { name: 'Video player' })
+    await Promise.race([
+      lightbox.dialog.waitFor({ state: 'visible', timeout: 10000 }),
+      videoDialog.waitFor({ state: 'visible', timeout: 10000 }),
+    ]).catch(() => {})
+
+    const lightboxVisible = await lightbox.dialog.isVisible().catch(() => false)
     const videoVisible = await videoDialog.isVisible().catch(() => false)
 
     expect(lightboxVisible || videoVisible).toBe(true)
@@ -71,6 +76,7 @@ test.describe('Family feed workflow', () => {
   test('lightbox navigation controls work between items', async ({ page }) => {
     const feed = new FeedPage(page)
     const lightbox = new LightboxPage(page)
+    const videoPlayer = page.getByRole('dialog', { name: 'Video player' })
 
     await feed.goto()
     await feed.expectLoaded()
@@ -81,9 +87,12 @@ test.describe('Family feed workflow', () => {
       return
     }
 
-    // Open first item
+    // Open first item — wait for whichever dialog appears (lightbox or video player)
     await feed.mediaCards.first().getByRole('button', { name: /Open media/ }).click()
-    await lightbox.expectVisible()
+    await Promise.race([
+      lightbox.dialog.waitFor({ state: 'visible', timeout: 10000 }),
+      videoPlayer.waitFor({ state: 'visible', timeout: 10000 }),
+    ])
 
     // Next button should be visible when there are multiple items
     await lightbox.expectNextVisible()
@@ -92,9 +101,10 @@ test.describe('Family feed workflow', () => {
     // Prev button should now be visible
     await lightbox.expectPrevVisible()
 
-    // Close lightbox
-    await lightbox.close()
-    await lightbox.expectNotVisible()
+    // Close whichever dialog is open
+    await page.getByRole('button', { name: /Close/ }).first().click()
+    await expect(lightbox.dialog).not.toBeVisible()
+    await expect(videoPlayer).not.toBeVisible()
   })
 
 })

@@ -26,6 +26,44 @@ export default function InfiniteScroll({ initialItems, initialCursor, currentUse
   const [mediaUrl, setMediaUrl] = useState<string | null>(null)
   const [mediaLoading, setMediaLoading] = useState(false)
 
+  // Track items pending thumbnail generation
+  const pendingThumbnails = useRef<Set<string>>(new Set())
+
+  // Poll for thumbnail on newly uploaded items that have no thumbnailUrl
+  const pollThumbnail = useCallback((itemId: string) => {
+    if (pendingThumbnails.current.has(itemId)) return
+    pendingThumbnails.current.add(itemId)
+
+    let attempts = 0
+    const MAX_ATTEMPTS = 24 // ~2 minutes at 5s intervals
+
+    const poll = async () => {
+      attempts++
+      try {
+        const res = await fetch(`/api/media/${itemId}`)
+        if (res.ok) {
+          const data: { thumbnailUrl: string | null } = await res.json()
+          if (data.thumbnailUrl) {
+            setItems((prev) =>
+              prev.map((i) => i.id === itemId ? { ...i, thumbnailUrl: data.thumbnailUrl } : i)
+            )
+            pendingThumbnails.current.delete(itemId)
+            return
+          }
+        }
+      } catch {
+        // ignore, retry
+      }
+      if (attempts < MAX_ATTEMPTS) {
+        setTimeout(poll, 5000)
+      } else {
+        pendingThumbnails.current.delete(itemId)
+      }
+    }
+
+    setTimeout(poll, 3000) // first check after 3s
+  }, [])
+
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<FeedItem | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -180,6 +218,7 @@ export default function InfiniteScroll({ initialItems, initialCursor, currentUse
           onClose={() => setShowUpload(false)}
           onSuccess={(item) => {
             setItems((prev) => [item, ...prev])
+            if (!item.thumbnailUrl) pollThumbnail(item.id)
             setShowUpload(false)
           }}
         />
